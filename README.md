@@ -1,36 +1,284 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<div align="center">
+
+# ⚠ TrailAlert
+
+**Aktuelle Forstwege-Sperren für Mountainbiker in Osttirol und Tirol**
+
+Crowdsourcing-Plattform: Sperren melden · bestätigen · beobachten
+
+---
+
+[![Next.js](https://img.shields.io/badge/Next.js-16.2-black?logo=nextdotjs)](https://nextjs.org)
+[![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20Auth-3ECF8E?logo=supabase)](https://supabase.com)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)](https://typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-v4-06B6D4?logo=tailwindcss)](https://tailwindcss.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-f59e0b.svg)](LICENSE)
+
+</div>
+
+---
+
+## Was ist TrailAlert?
+
+TrailAlert zeigt Mountainbikern in Osttirol und Tirol auf einer interaktiven Karte, welche Forstwege aktuell **gesperrt oder eingeschränkt** sind. Die Community meldet Sperren, stimmt über deren Richtigkeit ab und wird bei neuen Sperren in beobachteten Gebieten per **E-Mail benachrichtigt**.
+
+> **Demo:** [trailalert.vercel.app](https://trailalert.vercel.app) *(Live-URL nach Deployment eintragen)*
+
+---
+
+## Features
+
+| Feature | Beschreibung |
+|---|---|
+| 🗺 **Interaktive Karte** | OpenStreetMap mit farbcodierten Sperr-Markern (rot / orange / gelb je Schweregrad) |
+| 📍 **Sperre melden** | 3-Schritte-Formular: Ort (GPS oder Karte) → Details → optional Foto |
+| 👍 **Voting-System** | Community bestätigt oder widerlegt Sperren; automatische Auflösung bei negativem Saldo |
+| 🔔 **Watch Areas** | Gebiete auf der Karte definieren und bei neuen Sperren per E-Mail informiert werden |
+| 🔍 **Filter** | Nach Typ, Schweregrad, Zeitraum und bestätigten Sperren filtern |
+| 📡 **Realtime** | Neue Sperren erscheinen sofort auf der Karte ohne Seitenreload |
+| 🔐 **Auth** | Google OAuth oder Magic Link (Passwortlos) — anonym melden ebenfalls möglich |
+| 📱 **Mobile-first** | Bottom Sheet auf Mobile, Swipe-Gesten, Safe-Area-Unterstützung (iOS-Notch) |
+| 🌐 **PWA-ready** | Installierbar als App (manifest.json, Standalone-Modus, Theme Color) |
+
+---
+
+## Screenshots
+
+> *Screenshots nach dem ersten Deployment hier eintragen*
+
+| Kartenansicht | Sperre melden | Filter |
+|:---:|:---:|:---:|
+| *(Screenshot)* | *(Screenshot)* | *(Screenshot)* |
+
+---
+
+## Tech Stack
+
+| Layer | Technologie |
+|---|---|
+| **Framework** | [Next.js 16.2](https://nextjs.org) (App Router, React 19, React Compiler) |
+| **Sprache** | TypeScript 5 (strict mode) |
+| **Styling** | [Tailwind CSS v4](https://tailwindcss.com) (CSS-first, kein tailwind.config.js) |
+| **Karte** | [Leaflet](https://leafletjs.com) + [React-Leaflet v5](https://react-leaflet.js.org) (OpenStreetMap) |
+| **Backend** | [Supabase](https://supabase.com) — Postgres, Auth, Realtime, Storage, Edge Functions |
+| **E-Mail** | [Resend](https://resend.com) via Supabase Edge Functions (Deno) |
+| **Deployment** | [Vercel](https://vercel.com) (Region: `fra1` Frankfurt) |
+| **Icons** | [Lucide React](https://lucide.dev) |
+| **Datumsformatierung** | [date-fns](https://date-fns.org) mit deutschem Locale |
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### Voraussetzungen
+
+- **Node.js** ≥ 18
+- **npm** ≥ 9
+- Ein [Supabase](https://supabase.com) Account (Free Tier reicht)
+- Optional: [Supabase CLI](https://supabase.com/docs/guides/cli) für lokale Entwicklung
+
+---
+
+### 1. Repository klonen
+
+```bash
+git clone https://github.com/<dein-username>/trailalert.git
+cd trailalert
+```
+
+### 2. Abhängigkeiten installieren
+
+```bash
+npm install
+```
+
+### 3. Supabase Projekt erstellen
+
+1. Gehe zu [supabase.com](https://supabase.com) → **New Project**
+2. Region: **eu-central-1** (Frankfurt) empfohlen
+3. Notiere dir **Project URL** und **anon key** (Settings → API)
+
+### 4. Umgebungsvariablen konfigurieren
+
+Bearbeite `.env.local` im Projektroot:
+
+```env
+# Supabase (erforderlich)
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<dein-anon-key>
+
+# App URL (für OG-Tags und E-Mail-Links)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+### 5. SQL-Migrationen ausführen
+
+Öffne den **SQL Editor** im Supabase Dashboard (Database → SQL Editor → New Query) und führe die folgenden Dateien **in dieser Reihenfolge** aus:
+
+```
+supabase/migrations/001_initial_schema.sql   # Tabellen, RLS, Trigger, Realtime, Storage
+supabase/migrations/002_notify_webhook.sql   # Webhook-Funktion für E-Mail-Benachrichtigungen
+```
+
+Optional — Testdaten für die Region Lienz/Osttirol laden:
+
+```
+supabase/seed.sql   # 10 realistische Sperren rund um Lienz
+```
+
+### 6. Authentifizierung einrichten
+
+Im Supabase Dashboard unter **Authentication → Providers**:
+
+- **Email**: aktivieren (für Magic Link / Passwortlos-Login)
+- **Google** *(optional)*: Client ID + Secret aus der [Google Cloud Console](https://console.cloud.google.com) eintragen
+
+Redirect URL eintragen: `https://<project-ref>.supabase.co/auth/v1/callback`
+
+### 7. Entwicklungsserver starten
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Öffne [http://localhost:3000](http://localhost:3000) — die Karte erscheint mit den Seed-Daten.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### E-Mail-Benachrichtigungen einrichten (optional)
 
-## Learn More
+Watch Areas senden E-Mails über [Resend](https://resend.com):
 
-To learn more about Next.js, take a look at the following resources:
+1. Resend Account erstellen → API Key holen
+2. Edge Function deployen:
+   ```bash
+   supabase functions deploy notify-new-closure
+   ```
+3. Secrets setzen (Supabase Dashboard → Edge Functions → Secrets):
+   ```
+   SUPABASE_URL              https://<project-ref>.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY <service-role-key>
+   RESEND_API_KEY            re_...
+   EMAIL_FROM                TrailAlert <noreply@trailalert.at>
+   APP_URL                   https://trailalert.vercel.app
+   WEBHOOK_SECRET            <zufälliger-geheimer-string>
+   ```
+4. Webhook anlegen: Supabase → **Database → Webhooks → Create a new hook**
+   - Table: `closures`, Event: `INSERT`
+   - URL: `https://<project-ref>.supabase.co/functions/v1/notify-new-closure`
+   - Header: `x-webhook-secret: <WEBHOOK_SECRET>`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Projektstruktur
 
-## Deploy on Vercel
+```
+trailalert/
+├── src/
+│   ├── app/
+│   │   ├── auth/callback/route.ts   # OAuth + Magic Link Callback
+│   │   ├── globals.css              # Tailwind v4 + Design Tokens
+│   │   ├── layout.tsx               # Root Layout, Metadata, Provider-Wrapping
+│   │   ├── page.tsx                 # Startseite → MapLoader
+│   │   ├── error.tsx                # Next.js Error Boundary
+│   │   ├── loading.tsx              # Lade-Skeleton
+│   │   └── icon.tsx                 # Dynamisches Favicon (next/og)
+│   │
+│   ├── components/
+│   │   ├── Map.tsx                  # Leaflet-Karte (Client, SSR:false via MapLoader)
+│   │   ├── MapLoader.tsx            # dynamic()-Wrapper für SSR:false
+│   │   ├── ClosureMarker.tsx        # DivIcon-Marker mit Puls-Animation
+│   │   ├── ClosurePopup.tsx         # Popup mit Voting + Details
+│   │   ├── FilterSidebar.tsx        # Filter (Bottom Sheet Mobile / Sidebar Desktop)
+│   │   ├── ReportForm.tsx           # 3-Step-Formular: Sperre melden
+│   │   ├── WatchAreaManager.tsx     # Watch-Area CRUD-Panel
+│   │   ├── PositionPicker.tsx       # Mini-Karte für Positionsauswahl
+│   │   ├── Header.tsx               # Navigation + Hamburger-Menü
+│   │   ├── AuthModal.tsx            # Login/Register Modal
+│   │   └── AuthButton.tsx           # Desktop Dropdown + Mobile Variant
+│   │
+│   ├── contexts/
+│   │   ├── AuthContext.tsx          # Supabase Auth State
+│   │   ├── ReportFormContext.tsx    # Formular-Open-State + onSuccess-Ref
+│   │   └── WatchAreaContext.tsx     # Panel-Open-State
+│   │
+│   ├── hooks/
+│   │   ├── useClosures.ts           # Sperren laden + Realtime + Filter
+│   │   ├── useGeolocation.ts        # GPS-Hook
+│   │   └── useWatchAreas.ts         # Watch-Area CRUD
+│   │
+│   ├── lib/
+│   │   ├── supabase/
+│   │   │   ├── client.ts            # Browser-Client
+│   │   │   └── server.ts            # Server-Client (async cookies)
+│   │   └── types.ts                 # Closure, Vote, WatchArea Interfaces
+│   │
+│   └── proxy.ts                     # Next.js 16 Proxy (ehem. middleware.ts)
+│
+├── supabase/
+│   ├── migrations/
+│   │   ├── 001_initial_schema.sql   # Schema, RLS, Trigger, Realtime, Storage
+│   │   └── 002_notify_webhook.sql   # pg_net Webhook-Trigger
+│   ├── functions/
+│   │   └── notify-new-closure/
+│   │       └── index.ts             # Deno Edge Function: Haversine + Resend
+│   └── seed.sql                     # 10 Testdaten rund um Lienz/Osttirol
+│
+├── public/
+│   └── manifest.json                # PWA Manifest
+│
+├── next.config.ts                   # Next.js Config (React Compiler, remotePatterns)
+├── vercel.json                      # Vercel Region fra1 + Security Headers
+├── tsconfig.json                    # TypeScript (Deno-Functions excluded)
+└── .env.local                       # Lokale Umgebungsvariablen (nicht committen!)
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deployment auf Vercel
+
+1. Repository auf GitHub pushen
+2. [vercel.com](https://vercel.com) → **Import Project** → GitHub Repo auswählen
+3. Environment Variables eintragen (Settings → Environment Variables):
+   ```
+   NEXT_PUBLIC_SUPABASE_URL      https://<project-ref>.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY <anon-key>
+   NEXT_PUBLIC_APP_URL           https://trailalert.vercel.app
+   ```
+4. **Deploy** — Vercel erkennt Next.js automatisch
+
+`vercel.json` konfiguriert bereits Region `fra1` (Frankfurt) und Security-Header.
+
+---
+
+## Contributing
+
+Beiträge sind willkommen!
+
+1. Fork erstellen
+2. Feature-Branch anlegen: `git checkout -b feature/mein-feature`
+3. Änderungen committen: `git commit -m "feat: mein Feature"`
+4. Branch pushen: `git push origin feature/mein-feature`
+5. Pull Request öffnen
+
+**Code-Richtlinien:**
+- TypeScript strict — kein `any`
+- Deutsche UI-Texte, englische Kommentare und Variablen
+- Server Components bevorzugen, `'use client'` nur wenn nötig
+- Supabase RLS für alle Datenbankoperationen
+
+---
+
+## Lizenz
+
+MIT © 2025 — Details in [LICENSE](LICENSE)
+
+---
+
+<div align="center">
+
+Made with ☕ in Osttirol
+
+*Für alle, die lieber Trails fahren als Schilder lesen.*
+
+</div>

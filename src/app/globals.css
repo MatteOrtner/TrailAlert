@@ -1,26 +1,173 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Design Tokens
+--------------------------------------------------------------------------- */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-dark:        #0f1115;
+  --bg-card:        #1a1d24;
+  --bg-card-hover:  #22262f;
+  --border:         #2a2e38;
+  --text-primary:   #f1f3f7;
+  --text-secondary: #8b92a5;
+  --accent:         #f59e0b;
+  --accent-hover:   #d97706;
+  --danger:         #ef4444;
+  --success:        #22c55e;
 }
 
+/* Expose tokens as Tailwind utilities via @theme inline */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg-dark:        var(--bg-dark);
+  --color-bg-card:        var(--bg-card);
+  --color-bg-card-hover:  var(--bg-card-hover);
+  --color-border:         var(--border);
+  --color-text-primary:   var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-accent:         var(--accent);
+  --color-accent-hover:   var(--accent-hover);
+  --color-danger:         var(--danger);
+  --color-success:        var(--success);
+
+  --font-sans: var(--font-jakarta);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ---------------------------------------------------------------------------
+   Base
+--------------------------------------------------------------------------- */
+
+html {
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  color-scheme: dark;
+  /* Prevent bounce-scroll on iOS */
+  overscroll-behavior: none;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  /* Fill the viewport including notch areas */
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Prevent text size adjust on orientation change */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* ---------------------------------------------------------------------------
+   Custom Marker Styles (injected into Leaflet DivIcon HTML)
+--------------------------------------------------------------------------- */
+
+.ta-marker {
+  position: relative;
+  width: 26px;
+  height: 26px;
+}
+
+.ta-marker-dot {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--marker-color, #ef4444);
+  border: 3px solid #fff;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.35),
+    0 3px 8px rgba(0, 0, 0, 0.45);
+}
+
+.ta-marker-ring {
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  border: 2.5px solid var(--marker-color, #ef4444);
+  animation: ta-pulse 1.8s ease-out infinite;
+}
+
+@keyframes ta-pulse {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* ---------------------------------------------------------------------------
+   Leaflet — UI overrides (tile-neutral: works with Voyager or topo tiles)
+--------------------------------------------------------------------------- */
+
+.leaflet-container {
+  /* Match OpenTopoMap's land background so unloaded tiles are invisible */
+  background: #f8f8f5 !important;
+  font-family: var(--font-jakarta), system-ui, sans-serif;
+}
+
+.leaflet-tile-pane,
+.leaflet-tile-container {
+  background: #f8f8f5;
+}
+
+/* GPU layer only on the element Leaflet actually animates */
+.leaflet-zoom-animated {
+  will-change: transform;
+}
+
+/* Tile fade-in only when NOT animating — avoids frame drops */
+.leaflet-tile {
+  transition: opacity 150ms linear;
+}
+.leaflet-zoom-anim .leaflet-tile,
+.leaflet-dragging  .leaflet-tile {
+  transition: none;
+}
+
+/* Popup — light card to match OpenTopoMap tiles */
+.leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
+}
+
+.leaflet-popup-tip {
+  background: #ffffff !important;
+}
+
+.leaflet-popup-close-button {
+  color: #6b7280 !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: #111827 !important;
+}
+
+/* Controls — dark card style contrasts well against the light tiles */
+.leaflet-control-zoom a {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border) !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: var(--bg-card-hover) !important;
+}
+
+.leaflet-bar {
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25) !important;
+}
+
+.leaflet-control-attribution {
+  background: rgba(15, 17, 21, 0.7) !important;
+  color: var(--text-secondary) !important;
+  font-size: 10px;
+  backdrop-filter: blur(4px);
+}
+
+.leaflet-control-attribution a {
+  color: var(--accent) !important;
 }

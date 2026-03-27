@@ -1,0 +1,645 @@
+'use client'
+
+import { useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
+import {
+  X, Locate, MapPin, ChevronRight, ChevronLeft,
+  Upload, Loader2, CheckCircle2, ImageIcon,
+} from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { useReportForm } from '@/contexts/ReportFormContext'
+import { useGeolocation } from '@/hooks/useGeolocation'
+import type { ClosureType, SeverityLevel } from '@/lib/types'
+
+// PositionPicker is Leaflet — must be ssr:false; ReportForm is already 'use client'
+const PositionPicker = dynamic(() => import('./PositionPicker'), {
+  ssr: false,
+  loading: () => (
+    <div
+      className="flex items-center justify-center rounded-lg"
+      style={{ height: 220, background: 'var(--bg-dark)', border: '1px solid var(--border)' }}
+    >
+      <Loader2 className="h-5 w-5 animate-spin" style={{ color: 'var(--accent)' }} />
+    </div>
+  ),
+})
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const TYPE_OPTIONS: { value: ClosureType; label: string }[] = [
+  { value: 'forestwork',   label: 'Forstarbeiten' },
+  { value: 'construction', label: 'Bauarbeiten' },
+  { value: 'damage',       label: 'Wegschaden' },
+  { value: 'other',        label: 'Sonstiges' },
+]
+
+const SEVERITY_OPTIONS: { value: SeverityLevel; label: string; color: string; desc: string }[] = [
+  { value: 'full_closure', label: 'Voll gesperrt',       color: '#ef4444', desc: 'Weg komplett unbefahrbar' },
+  { value: 'partial',      label: 'Teilweise befahrbar', color: '#f59e0b', desc: 'Eingeschränkt passierbar' },
+  { value: 'warning',      label: 'Warnung',             color: '#eab308', desc: 'Vorsicht empfohlen' },
+]
+
+const MAX_FILE_BYTES = 5 * 1024 * 1024
+const ALLOWED_TYPES  = ['image/jpeg', 'image/png', 'image/webp']
+
+// ---------------------------------------------------------------------------
+// Reusable field wrapper
+// ---------------------------------------------------------------------------
+
+function Field({
+  label, required, error, children,
+}: {
+  label: string; required?: boolean; error?: string; children: React.ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+        {label}
+        {required && <span style={{ color: 'var(--accent)' }}> *</span>}
+      </label>
+      {children}
+      {error && <p className="text-xs" style={{ color: 'var(--danger)' }}>{error}</p>}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Step indicator
+// ---------------------------------------------------------------------------
+
+const STEPS = ['Ort', 'Details', 'Foto']
+
+function StepBar({ current }: { current: number }) {
+  return (
+    <div className="flex items-center gap-1">
+      {STEPS.map((label, i) => (
+        <div key={label} className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
+            <span
+              className="flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold"
+              style={{
+                background: i < current ? 'var(--success)' : i === current ? 'var(--accent)' : 'var(--border)',
+                color:      i <= current ? 'var(--bg-dark)' : 'var(--text-secondary)',
+              }}
+            >
+              {i < current ? '✓' : i + 1}
+            </span>
+            <span
+              className="text-xs font-medium"
+              style={{ color: i === current ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+            >
+              {label}
+            </span>
+          </div>
+          {i < STEPS.length - 1 && (
+            <div className="h-px w-4" style={{ background: 'var(--border)' }} />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// ReportForm
+// ---------------------------------------------------------------------------
+
+type Step = 0 | 1 | 2 | 'success'
+
+interface FormState {
+  position:    { lat: number; lng: number } | null
+  title:       string
+  type:        ClosureType
+  severity:    SeverityLevel
+  description: string
+  expectedEnd: string
+}
+
+const INITIAL_FORM: FormState = {
+  position:    null,
+  title:       '',
+  type:        'forestwork',
+  severity:    'full_closure',
+  description: '',
+  expectedEnd: '',
+}
+
+export function ReportForm() {
+  const { isOpen, close, onSuccessRef } = useReportForm()
+  const geo = useGeolocation()
+
+  const [step, setStep]           = useState<Step>(0)
+  const [form, setForm]           = useState<FormState>(INITIAL_FORM)
+  const [errors, setErrors]       = useState<Partial<Record<keyof FormState, string>>>({})
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [photoError, setPhotoError]     = useState<string | null>(null)
+  const [submitting, setSubmitting]     = useState(false)
+  const [dragOver, setDragOver]         = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const touchStartY  = useRef(0)
+
+  function handleClose() {
+    close()
+    // Reset after transition
+    setTimeout(() => {
+      setStep(0)
+      setForm(INITIAL_FORM)
+      setErrors({})
+      setPhotoFile(null)
+      setPhotoPreview(null)
+      setPhotoError(null)
+    }, 300)
+  }
+
+  function onHeaderTouchStart(e: React.TouchEvent) {
+    touchStartY.current = e.touches[0].clientY
+  }
+  function onHeaderTouchEnd(e: React.TouchEvent) {
+    if (e.changedTouches[0].clientY - touchStartY.current > 80) handleClose()
+  }
+
+  function set<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((f) => ({ ...f, [key]: value }))
+    if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }))
+  }
+
+  // --- GPS ---
+  function useGps() {
+    geo.requestLocation()
+  }
+
+  // Sync GPS position once available
+  if (geo.position && !form.position) {
+    set('position', { lat: geo.position.latitude, lng: geo.position.longitude })
+  }
+
+  // --- Photo file validation ---
+  function applyPhoto(file: File) {
+    setPhotoError(null)
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setPhotoError('Nur JPG, PNG oder WebP erlaubt.')
+      return
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      setPhotoError('Maximale Dateigröße: 5 MB.')
+      return
+    }
+    setPhotoFile(file)
+    setPhotoPreview(URL.createObjectURL(file))
+  }
+
+  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) applyPhoto(file)
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file) applyPhoto(file)
+  }
+
+  // --- Step validation ---
+  function validateStep0(): boolean {
+    if (!form.position) {
+      setErrors({ position: 'Bitte Position auf der Karte setzen oder GPS verwenden.' })
+      return false
+    }
+    return true
+  }
+
+  function validateStep1(): boolean {
+    const errs: typeof errors = {}
+    if (!form.title.trim()) {
+      errs.title = 'Titel ist erforderlich.'
+    } else if (form.title.trim().length < 5) {
+      errs.title = 'Titel muss mindestens 5 Zeichen haben.'
+    }
+    setErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
+  function nextStep() {
+    if (step === 0 && validateStep0()) setStep(1)
+    else if (step === 1 && validateStep1()) setStep(2)
+  }
+
+  // --- Submit ---
+  async function handleSubmit() {
+    if (submitting || !form.position) return
+    setSubmitting(true)
+
+    const supabase = createClient()
+    let photoUrl: string | null = null
+
+    // Upload photo (optional — silently skip if fails for anonymous users)
+    if (photoFile) {
+      const ext  = photoFile.name.split('.').pop() ?? 'jpg'
+      const path = `${Date.now()}_${crypto.randomUUID()}.${ext}`
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('closure-photos')
+        .upload(path, photoFile, { contentType: photoFile.type, upsert: false })
+
+      if (!uploadError && uploadData) {
+        const { data: { publicUrl } } = supabase.storage
+          .from('closure-photos')
+          .getPublicUrl(uploadData.path)
+        photoUrl = publicUrl
+      } else if (uploadError) {
+        setPhotoError('Foto konnte nicht hochgeladen werden (Login erforderlich).')
+        // Continue without photo
+      }
+    }
+
+    const { data: closure, error: insertError } = await supabase
+      .from('closures')
+      .insert({
+        latitude:     form.position.lat,
+        longitude:    form.position.lng,
+        title:        form.title.trim(),
+        description:  form.description.trim() || null,
+        closure_type: form.type,
+        severity:     form.severity,
+        expected_end: form.expectedEnd || null,
+        photo_url:    photoUrl,
+        reported_by:  null,      // anonymous
+        status:       'unconfirmed',
+      })
+      .select()
+      .single()
+
+    setSubmitting(false)
+
+    if (insertError || !closure) {
+      setErrors({ title: `Fehler beim Speichern: ${insertError?.message ?? 'Unbekannt'}` })
+      setStep(1)
+      return
+    }
+
+    setStep('success')
+    onSuccessRef.current?.(closure.latitude, closure.longitude)
+
+    // Auto-close after 4s
+    setTimeout(handleClose, 4000)
+  }
+
+  // Shared input/textarea style
+  const inputStyle: React.CSSProperties = {
+    background:   'var(--bg-dark)',
+    border:       '1px solid var(--border)',
+    borderRadius: 8,
+    color:        'var(--text-primary)',
+    padding:      '8px 12px',
+    fontSize:     14,
+    width:        '100%',
+    outline:      'none',
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
+  return (
+    <>
+      {/* Backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-[1001] bg-black/50 backdrop-blur-sm sm:bg-black/30"
+          onClick={handleClose}
+        />
+      )}
+
+      {/* Panel */}
+      <aside
+        className="fixed inset-y-0 right-0 z-[1002] flex w-full flex-col sm:w-[480px]"
+        style={{
+          background:  'var(--bg-card)',
+          borderLeft:  '1px solid var(--border)',
+          boxShadow:   '-8px 0 32px rgba(0,0,0,0.5)',
+          transform:   isOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition:  'transform 300ms ease-in-out',
+        }}
+      >
+        {/* Header — swipe down to close on mobile */}
+        <div
+          className="flex items-center justify-between px-5 py-4"
+          style={{ borderBottom: '1px solid var(--border)' }}
+          onTouchStart={onHeaderTouchStart}
+          onTouchEnd={onHeaderTouchEnd}
+        >
+          <div className="flex flex-col gap-1">
+            <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+              Sperre melden
+            </span>
+            {step !== 'success' && <StepBar current={step as number} />}
+          </div>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg transition-colors"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 py-5">
+
+          {/* ---- STEP 0: Position ---- */}
+          {step === 0 && (
+            <>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Wo befindet sich die Sperre? Nutze GPS oder klicke auf die Karte.
+              </p>
+
+              <button
+                type="button"
+                onClick={useGps}
+                disabled={geo.loading}
+                className="flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors"
+                style={{
+                  background:   'var(--accent)',
+                  color:        'var(--bg-dark)',
+                  border:       'none',
+                  cursor:       geo.loading ? 'not-allowed' : 'pointer',
+                  opacity:      geo.loading ? 0.7 : 1,
+                }}
+              >
+                {geo.loading
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <Locate className="h-4 w-4" />
+                }
+                Meinen Standort verwenden
+              </button>
+
+              {geo.error && (
+                <p className="text-xs" style={{ color: 'var(--danger)' }}>{geo.error}</p>
+              )}
+
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1" style={{ background: 'var(--border)' }} />
+                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>oder</span>
+                <div className="h-px flex-1" style={{ background: 'var(--border)' }} />
+              </div>
+
+              <PositionPicker
+                value={form.position}
+                onChange={(pos) => set('position', pos)}
+              />
+
+              {errors.position && (
+                <p className="text-xs" style={{ color: 'var(--danger)' }}>{errors.position}</p>
+              )}
+            </>
+          )}
+
+          {/* ---- STEP 1: Details ---- */}
+          {step === 1 && (
+            <>
+              <Field label="Titel" required error={errors.title}>
+                <input
+                  type="text"
+                  value={form.title}
+                  onChange={(e) => set('title', e.target.value)}
+                  placeholder="z.B. Forststraße Richtung Hochstein"
+                  minLength={5}
+                  maxLength={100}
+                  style={inputStyle}
+                />
+              </Field>
+
+              <Field label="Typ">
+                <select
+                  value={form.type}
+                  onChange={(e) => set('type', e.target.value as ClosureType)}
+                  style={inputStyle}
+                >
+                  {TYPE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Schweregrad" required>
+                <div className="flex flex-col gap-2">
+                  {SEVERITY_OPTIONS.map((o) => (
+                    <label
+                      key={o.value}
+                      className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors"
+                      style={{
+                        border:     `1px solid ${form.severity === o.value ? o.color : 'var(--border)'}`,
+                        background: form.severity === o.value ? `${o.color}18` : 'transparent',
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="severity"
+                        value={o.value}
+                        checked={form.severity === o.value}
+                        onChange={() => set('severity', o.value)}
+                        className="sr-only"
+                      />
+                      <span className="h-3 w-3 rounded-full shrink-0" style={{ background: o.color }} />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                          {o.label}
+                        </span>
+                        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                          {o.desc}
+                        </span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </Field>
+
+              <Field label="Beschreibung">
+                <textarea
+                  value={form.description}
+                  onChange={(e) => set('description', e.target.value)}
+                  placeholder="Was genau ist los? (optional)"
+                  rows={3}
+                  maxLength={500}
+                  style={{ ...inputStyle, resize: 'none', lineHeight: 1.5 }}
+                />
+              </Field>
+
+              <Field label="Voraussichtliches Ende">
+                <input
+                  type="date"
+                  value={form.expectedEnd}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => set('expectedEnd', e.target.value)}
+                  style={{
+                    ...inputStyle,
+                    colorScheme: 'dark',
+                  }}
+                />
+              </Field>
+            </>
+          )}
+
+          {/* ---- STEP 2: Foto ---- */}
+          {step === 2 && (
+            <>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Füge ein Foto hinzu um die Meldung zu verdeutlichen (optional, max. 5 MB).
+              </p>
+
+              {photoPreview ? (
+                <div className="relative">
+                  <img
+                    src={photoPreview}
+                    alt="Vorschau"
+                    className="w-full rounded-lg object-cover"
+                    style={{ maxHeight: 240 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setPhotoFile(null); setPhotoPreview(null) }}
+                    className="absolute right-2 top-2 rounded-full p-1"
+                    style={{ background: 'rgba(0,0,0,0.7)', color: '#fff' }}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg py-10 transition-colors"
+                  style={{
+                    border:     `2px dashed ${dragOver ? 'var(--accent)' : 'var(--border)'}`,
+                    background: dragOver ? 'var(--accent)/5' : 'transparent',
+                  }}
+                >
+                  <div
+                    className="flex h-12 w-12 items-center justify-center rounded-full"
+                    style={{ background: 'var(--bg-dark)' }}
+                  >
+                    <ImageIcon className="h-6 w-6" style={{ color: 'var(--text-secondary)' }} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                      Foto ablegen oder klicken
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                      JPG, PNG, WebP · max. 5 MB
+                    </p>
+                  </div>
+                  <div
+                    className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium"
+                    style={{ background: 'var(--bg-dark)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    Datei auswählen
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    onChange={handleFileInput}
+                  />
+                </div>
+              )}
+
+              {photoError && (
+                <p className="text-xs" style={{ color: 'var(--danger)' }}>{photoError}</p>
+              )}
+
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Hinweis: Foto-Upload erfordert einen Account. Ohne Login wird die Sperre ohne Foto gespeichert.
+              </p>
+            </>
+          )}
+
+          {/* ---- SUCCESS ---- */}
+          {step === 'success' && (
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 py-10 text-center">
+              <div
+                className="flex h-16 w-16 items-center justify-center rounded-full"
+                style={{ background: 'var(--success)/15' }}
+              >
+                <CheckCircle2 className="h-9 w-9" style={{ color: 'var(--success)' }} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+                  Danke für deine Meldung!
+                </p>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  Deine Sperre ist jetzt auf der Karte sichtbar. Die Community kann sie bestätigen oder widerrufen.
+                </p>
+              </div>
+              <div className="mt-2 flex items-center gap-1.5 rounded-full px-3 py-1"
+                   style={{ background: 'var(--bg-dark)', border: '1px solid var(--border)' }}>
+                <MapPin className="h-3.5 w-3.5" style={{ color: 'var(--accent)' }} />
+                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Karte zoomt auf deine Meldung
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer actions */}
+        {step !== 'success' && (
+          <div
+            className="flex items-center justify-between gap-3 px-5 py-4"
+            style={{ borderTop: '1px solid var(--border)' }}
+          >
+            {step > 0 ? (
+              <button
+                type="button"
+                onClick={() => setStep((s) => (s as number) - 1 as Step)}
+                className="flex items-center gap-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors"
+                style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Zurück
+              </button>
+            ) : (
+              <div />
+            )}
+
+            {step < 2 ? (
+              <button
+                type="button"
+                onClick={nextStep}
+                className="flex items-center gap-1 rounded-lg px-5 py-3 text-sm font-semibold transition-colors"
+                style={{ background: 'var(--accent)', color: 'var(--bg-dark)', border: 'none' }}
+              >
+                Weiter
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="flex items-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold transition-colors"
+                style={{
+                  background: 'var(--accent)',
+                  color:      'var(--bg-dark)',
+                  border:     'none',
+                  opacity:    submitting ? 0.7 : 1,
+                  cursor:     submitting ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                Meldung abschicken
+              </button>
+            )}
+          </div>
+        )}
+      </aside>
+    </>
+  )
+}
