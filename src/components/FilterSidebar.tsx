@@ -237,7 +237,7 @@ export function FilterSidebar({
             {TYPE_OPTIONS.map((opt) => (
               <FilterCheckbox
                 key={opt.value}
-                checked={filters.types.length === 0 || filters.types.includes(opt.value)}
+                checked={filters.types.includes(opt.value)}
                 onChange={() => toggleType(opt.value)}
                 label={opt.label}
               />
@@ -250,7 +250,7 @@ export function FilterSidebar({
             {SEVERITY_OPTIONS.map((opt) => (
               <FilterCheckbox
                 key={opt.value}
-                checked={filters.severities.length === 0 || filters.severities.includes(opt.value)}
+                checked={filters.severities.includes(opt.value)}
                 onChange={() => toggleSeverity(opt.value)}
                 label={opt.label}
                 accent={opt.color}

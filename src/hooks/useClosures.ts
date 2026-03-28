@@ -11,17 +11,20 @@ export interface ClosureFilters {
   confirmedOnly: boolean
 }
 
+const ALL_TYPES:      ClosureType[]    = ['forestwork', 'construction', 'damage', 'other']
+const ALL_SEVERITIES: SeverityLevel[]  = ['full_closure', 'partial', 'warning']
+
 export const DEFAULT_FILTERS: ClosureFilters = {
-  types:        [],
-  severities:   [],
-  timeRange:    'all',
+  types:         ALL_TYPES,
+  severities:    ALL_SEVERITIES,
+  timeRange:     'all',
   confirmedOnly: false,
 }
 
 export function isDefaultFilters(f: ClosureFilters): boolean {
   return (
-    f.types.length === 0 &&
-    f.severities.length === 0 &&
+    f.types.length === ALL_TYPES.length &&
+    f.severities.length === ALL_SEVERITIES.length &&
     f.timeRange === 'all' &&
     !f.confirmedOnly
   )
@@ -94,8 +97,8 @@ export function useClosures() {
   }, [])
 
   const closures = allClosures.filter((c) => {
-    if (filters.types.length > 0 && !filters.types.includes(c.closure_type)) return false
-    if (filters.severities.length > 0 && !filters.severities.includes(c.severity)) return false
+    if (!filters.types.includes(c.closure_type)) return false
+    if (!filters.severities.includes(c.severity)) return false
 
     if (filters.timeRange !== 'all') {
       const days   = filters.timeRange === '7d' ? 7 : 30
