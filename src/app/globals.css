@@ -95,7 +95,7 @@ html {
 --------------------------------------------------------------------------- */
 
 .leaflet-container {
-  background: #e8e0d8 !important;
+  background: #f8f8f5 !important;
   font-family: var(--font-jakarta), system-ui, sans-serif;
   touch-action: none;
 }

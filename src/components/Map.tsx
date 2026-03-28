@@ -20,12 +20,12 @@ import { WatchAreaManager } from './WatchAreaManager'
 // Constants
 // ---------------------------------------------------------------------------
 
-// ESRI World Topo Map — topographic tiles served via Esri's global CDN.
-// Shows elevation contours, forest roads, and trails. No API key required.
+// OpenTopoMap — topographic tiles with elevation contours, forest roads,
+// hiking & MTB trails. Subdomains a/b/c only (d does not exist).
 const TILE_URL =
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'
+  'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'
 const TILE_ATTRIBUTION =
-  'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community'
+  'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
 
 // ---------------------------------------------------------------------------
 // GPS button — inside MapContainer (needs useMap)
@@ -140,7 +140,8 @@ export default function Map() {
           <TileLayer
             url={TILE_URL}
             attribution={TILE_ATTRIBUTION}
-            maxNativeZoom={19}
+            subdomains="abc"
+            maxNativeZoom={17}
             maxZoom={20}
             keepBuffer={2}
             updateWhenZooming={false}
