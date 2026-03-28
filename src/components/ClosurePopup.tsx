@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Popup } from 'react-leaflet'
 import { formatDistanceToNow, format } from 'date-fns'
 import { de } from 'date-fns/locale'
@@ -49,10 +49,6 @@ function saveVote(closureId: string, vote: VoteType) {
   localStorage.setItem(VOTE_KEY(closureId), vote)
 }
 
-function clearVote(closureId: string) {
-  localStorage.removeItem(VOTE_KEY(closureId))
-}
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -62,13 +58,29 @@ interface Props {
 }
 
 export function ClosurePopup({ closure }: Props) {
-  const [upvotes, setUpvotes]       = useState(closure.upvotes)
-  const [downvotes, setDownvotes]   = useState(closure.downvotes)
   const [voted, setVoted]           = useState<VoteType | null>(() => getSavedVote(closure.id))
   const [submitting, setSubmitting] = useState(false)
   const [voteError, setVoteError]   = useState<string | null>(null)
+  // Optimistic deltas: reset to 0 once realtime updates the prop counts
+  const [delta, setDelta]           = useState<{ confirm: number; deny: number }>({ confirm: 0, deny: 0 })
+
+  // Track previous prop counts to detect realtime updates
+  const prevUpvotes   = useRef(closure.upvotes)
+  const prevDownvotes = useRef(closure.downvotes)
+
+  useEffect(() => {
+    if (closure.upvotes !== prevUpvotes.current || closure.downvotes !== prevDownvotes.current) {
+      prevUpvotes.current   = closure.upvotes
+      prevDownvotes.current = closure.downvotes
+      setDelta({ confirm: 0, deny: 0 })
+    }
+  }, [closure.upvotes, closure.downvotes])
 
   const severity = SEVERITY_LABELS[closure.severity]
+
+  // Display counts with optimistic delta applied
+  const displayUpvotes   = closure.upvotes + delta.confirm
+  const displayDownvotes = closure.downvotes + delta.deny
 
   async function handleVote(voteType: VoteType) {
     if (submitting || voted === voteType) return
@@ -87,8 +99,11 @@ export function ClosurePopup({ closure }: Props) {
       if (error) {
         setVoteError('Abstimmung fehlgeschlagen.')
       } else {
-        if (voteType === 'confirm') { setUpvotes(n => n + 1); setDownvotes(n => n - 1) }
-        else                        { setDownvotes(n => n + 1); setUpvotes(n => n - 1) }
+        if (voteType === 'confirm') {
+          setDelta(d => ({ confirm: d.confirm + 1, deny: d.deny - 1 }))
+        } else {
+          setDelta(d => ({ confirm: d.confirm - 1, deny: d.deny + 1 }))
+        }
         setVoted(voteType)
         saveVote(closure.id, voteType)
       }
@@ -101,11 +116,15 @@ export function ClosurePopup({ closure }: Props) {
         anon_fingerprint: fingerprint,
       })
       if (!error) {
-        if (voteType === 'confirm') setUpvotes(n => n + 1)
-        else setDownvotes(n => n + 1)
+        if (voteType === 'confirm') {
+          setDelta(d => ({ ...d, confirm: d.confirm + 1 }))
+        } else {
+          setDelta(d => ({ ...d, deny: d.deny + 1 }))
+        }
         setVoted(voteType)
         saveVote(closure.id, voteType)
       } else if (error.code === '23505') {
+        // Vote already exists in DB — sync local state without changing delta
         setVoted(voteType)
         saveVote(closure.id, voteType)
       } else {
@@ -185,7 +204,7 @@ export function ClosurePopup({ closure }: Props) {
             ].join(' ')}
           >
             <ThumbsUp className="h-3.5 w-3.5" />
-            Noch gesperrt {upvotes > 0 && <span className="opacity-70">({upvotes})</span>}
+            Noch gesperrt {displayUpvotes > 0 && <span className="opacity-70">({displayUpvotes})</span>}
           </button>
 
           <button
@@ -200,7 +219,7 @@ export function ClosurePopup({ closure }: Props) {
             ].join(' ')}
           >
             <ThumbsDown className="h-3.5 w-3.5" />
-            Nicht mehr {downvotes > 0 && <span className="opacity-70">({downvotes})</span>}
+            Nicht mehr {displayDownvotes > 0 && <span className="opacity-70">({displayDownvotes})</span>}
           </button>
         </div>
 
