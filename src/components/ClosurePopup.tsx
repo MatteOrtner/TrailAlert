@@ -87,18 +87,6 @@ export function ClosurePopup({ closure }: Props) {
       })
   }, [closure.id])
 
-  async function syncCounts(supabase: ReturnType<typeof createClient>) {
-    const { data } = await supabase
-      .from('closures')
-      .select('upvotes, downvotes')
-      .eq('id', closure.id)
-      .single()
-    if (data) {
-      setUpvotes(data.upvotes)
-      setDownvotes(data.downvotes)
-    }
-  }
-
   async function handleVote(voteType: VoteType) {
     if (submitting) return
     setSubmitting(true)
@@ -116,6 +104,8 @@ export function ClosurePopup({ closure }: Props) {
       if (error) {
         setVoteError('Abstimmung fehlgeschlagen.')
       } else {
+        if (voteType === 'confirm') setUpvotes(n => n - 1)
+        else setDownvotes(n => n - 1)
         setVoted(null)
         clearVote(closure.id)
       }
@@ -129,6 +119,8 @@ export function ClosurePopup({ closure }: Props) {
       if (error) {
         setVoteError('Abstimmung fehlgeschlagen.')
       } else {
+        if (voteType === 'confirm') { setUpvotes(n => n + 1); setDownvotes(n => n - 1) }
+        else                        { setDownvotes(n => n + 1); setUpvotes(n => n - 1) }
         setVoted(voteType)
         saveVote(closure.id, voteType)
       }
@@ -140,20 +132,31 @@ export function ClosurePopup({ closure }: Props) {
         vote_type:        voteType,
         anon_fingerprint: fingerprint,
       })
-      if (!error || error.code === '23505') {
+      if (!error) {
+        if (voteType === 'confirm') setUpvotes(n => n + 1)
+        else setDownvotes(n => n + 1)
         setVoted(voteType)
         saveVote(closure.id, voteType)
+      } else if (error.code === '23505') {
+        // Vote already exists in DB — local count may have drifted (e.g. a
+        // previous delete was silently blocked by RLS). Re-fetch the real
+        // counts so the display matches the DB exactly.
+        setVoted(voteType)
+        saveVote(closure.id, voteType)
+        const { data } = await supabase
+          .from('closures')
+          .select('upvotes, downvotes')
+          .eq('id', closure.id)
+          .single()
+        if (data) {
+          setUpvotes(data.upvotes)
+          setDownvotes(data.downvotes)
+        }
       } else {
         setVoteError('Abstimmung fehlgeschlagen.')
-        setSubmitting(false)
-        return
       }
     }
 
-    // Always read the authoritative count from DB after any operation.
-    // The trigger keeps closures.upvotes/downvotes accurate — no local
-    // arithmetic means no drift across add/remove cycles.
-    await syncCounts(supabase)
     setSubmitting(false)
   }
 
