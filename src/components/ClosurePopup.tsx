@@ -138,9 +138,20 @@ export function ClosurePopup({ closure }: Props) {
         setVoted(voteType)
         saveVote(closure.id, voteType)
       } else if (error.code === '23505') {
-        // Vote already in DB from another session — count already includes it
+        // Vote already exists in DB — local count may have drifted (e.g. a
+        // previous delete was silently blocked by RLS). Re-fetch the real
+        // counts so the display matches the DB exactly.
         setVoted(voteType)
         saveVote(closure.id, voteType)
+        const { data } = await supabase
+          .from('closures')
+          .select('upvotes, downvotes')
+          .eq('id', closure.id)
+          .single()
+        if (data) {
+          setUpvotes(data.upvotes)
+          setDownvotes(data.downvotes)
+        }
       } else {
         setVoteError('Abstimmung fehlgeschlagen.')
       }
