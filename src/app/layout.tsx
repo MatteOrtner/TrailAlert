@@ -38,6 +38,11 @@ export const metadata: Metadata = {
     description: DESC,
   },
   manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'TrailAlert',
+  },
 }
 
 export const viewport: Viewport = {
