@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Popup } from 'react-leaflet'
 import { formatDistanceToNow, format } from 'date-fns'
 import { de } from 'date-fns/locale'
@@ -69,6 +69,23 @@ export function ClosurePopup({ closure }: Props) {
   const [voteError, setVoteError]   = useState<string | null>(null)
 
   const severity = SEVERITY_LABELS[closure.severity]
+
+  // On mount, fetch actual counts from DB (trigger keeps them accurate).
+  // This fixes stale counts when the popup is closed and reopened in the
+  // same session — the closure prop never refreshes, but DB always has truth.
+  useEffect(() => {
+    createClient()
+      .from('closures')
+      .select('upvotes, downvotes')
+      .eq('id', closure.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setUpvotes(data.upvotes)
+          setDownvotes(data.downvotes)
+        }
+      })
+  }, [closure.id])
 
   async function handleVote(voteType: VoteType) {
     if (submitting) return
