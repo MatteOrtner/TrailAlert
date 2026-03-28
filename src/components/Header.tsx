@@ -15,7 +15,7 @@ export function Header() {
   }
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 h-16 border-b border-border bg-bg-dark/80 backdrop-blur-md">
+    <header className="fixed inset-x-0 top-0 z-50 h-16 border-b border-border bg-bg-dark/80 backdrop-blur-md" style={{ paddingTop: 'env(safe-area-inset-top)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-4 sm:px-6">
 
         {/* Logo */}

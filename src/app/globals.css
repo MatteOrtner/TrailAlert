@@ -41,18 +41,19 @@ html {
   background: var(--bg-dark);
   color: var(--text-primary);
   color-scheme: dark;
-  /* Prevent bounce-scroll on iOS */
   overscroll-behavior: none;
+  /* Use dynamic viewport height so the map fills the screen as the
+     mobile browser chrome (address bar) shows/hides */
+  height: 100dvh;
+  overflow: hidden;
 }
 
 body {
   background: var(--bg-dark);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
-  /* Fill the viewport including notch areas */
-  padding-top: env(safe-area-inset-top);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+  height: 100%;
+  overflow: hidden;
 }
 
 /* Prevent text size adjust on orientation change */

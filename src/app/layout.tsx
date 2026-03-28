@@ -53,12 +53,12 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="de" className={`${jakartaSans.variable} h-full`}>
-      <body className="h-full flex flex-col bg-bg-dark text-text-primary antialiased">
+      <body className="h-full overflow-hidden flex flex-col bg-bg-dark text-text-primary antialiased">
         <AuthProvider>
           <ReportFormProvider>
             <WatchAreaProvider>
               <Header />
-              <main className="flex flex-col flex-1 min-h-0 pt-16">{children}</main>
+              <main className="flex flex-col flex-1 min-h-0 overflow-hidden pt-16">{children}</main>
             </WatchAreaProvider>
           </ReportFormProvider>
         </AuthProvider>
