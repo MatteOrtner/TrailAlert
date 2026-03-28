@@ -96,14 +96,14 @@ html {
 --------------------------------------------------------------------------- */
 
 .leaflet-container {
-  /* Match OpenTopoMap's land background so unloaded tiles are invisible */
-  background: #f8f8f5 !important;
+  /* Match ESRI World Topo land background so unloaded tiles blend in */
+  background: #e8e0d8 !important;
   font-family: var(--font-jakarta), system-ui, sans-serif;
 }
 
 .leaflet-tile-pane,
 .leaflet-tile-container {
-  background: #f8f8f5;
+  background: #e8e0d8;
 }
 
 /* GPU layer only on the element Leaflet actually animates */
