@@ -12,7 +12,7 @@ export default async function Home({ searchParams }: Props) {
   const authError = params.auth_error ? decodeURIComponent(params.auth_error) : null
 
   return (
-    <div className="flex flex-1 flex-col min-h-0">
+    <div style={{ height: 'calc(100dvh - 4rem)', marginTop: '4rem' }}>
       <MapLoader />
       <AuthToast authOk={authOk} authError={authError} />
     </div>

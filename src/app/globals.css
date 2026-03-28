@@ -42,17 +42,12 @@ html {
   color: var(--text-primary);
   color-scheme: dark;
   overscroll-behavior: none;
-  /* Use dynamic viewport height so the map fills the screen as the
-     mobile browser chrome (address bar) shows/hides */
-  height: 100dvh;
-  overflow: hidden;
 }
 
 body {
   background: var(--bg-dark);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
-  height: 100%;
   overflow: hidden;
 }
 
