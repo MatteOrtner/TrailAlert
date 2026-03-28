@@ -45,7 +45,11 @@ interface CheckboxProps {
 
 function FilterCheckbox({ checked, onChange, label, accent }: CheckboxProps) {
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 py-1.5 select-none" onClick={() => onChange(!checked)}>
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className="flex w-full cursor-pointer items-center gap-2.5 py-1.5 select-none text-left"
+    >
       <span
         className="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors"
         style={{
@@ -64,7 +68,7 @@ function FilterCheckbox({ checked, onChange, label, accent }: CheckboxProps) {
         <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: accent }} />
       )}
       <span className="text-sm text-text-primary">{label}</span>
-    </label>
+    </button>
   )
 }
 
@@ -263,7 +267,12 @@ export function FilterSidebar({
           <Section title="Zeitraum">
             <div className="flex flex-col gap-1">
               {TIME_OPTIONS.map((opt) => (
-                <label key={opt.value} className="flex cursor-pointer items-center gap-2.5 py-1.5 select-none">
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setFilters({ ...filters, timeRange: opt.value })}
+                  className="flex w-full cursor-pointer items-center gap-2.5 py-1.5 select-none text-left"
+                >
                   <span
                     className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors"
                     style={{
@@ -275,15 +284,7 @@ export function FilterSidebar({
                     )}
                   </span>
                   <span className="text-sm text-text-primary">{opt.label}</span>
-                  <input
-                    type="radio"
-                    className="sr-only"
-                    name="timeRange"
-                    value={opt.value}
-                    checked={filters.timeRange === opt.value}
-                    onChange={() => setFilters({ ...filters, timeRange: opt.value })}
-                  />
-                </label>
+                </button>
               ))}
             </div>
           </Section>
