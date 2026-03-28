@@ -70,18 +70,23 @@ export function ClosurePopup({ closure }: Props) {
 
   const severity = SEVERITY_LABELS[closure.severity]
 
-  // Always re-fetch counts from DB after a vote so local state can never drift
+  // Count directly from the votes table — always accurate regardless of triggers
   async function refreshCounts() {
     const supabase = createClient()
-    const { data } = await supabase
-      .from('closures')
-      .select('upvotes, downvotes')
-      .eq('id', closure.id)
-      .single()
-    if (data) {
-      setUpvotes(data.upvotes)
-      setDownvotes(data.downvotes)
-    }
+    const [{ count: up }, { count: down }] = await Promise.all([
+      supabase
+        .from('votes')
+        .select('*', { count: 'exact', head: true })
+        .eq('closure_id', closure.id)
+        .eq('vote_type', 'confirm'),
+      supabase
+        .from('votes')
+        .select('*', { count: 'exact', head: true })
+        .eq('closure_id', closure.id)
+        .eq('vote_type', 'deny'),
+    ])
+    if (up !== null) setUpvotes(up)
+    if (down !== null) setDownvotes(down)
   }
 
   async function handleVote(voteType: VoteType) {
