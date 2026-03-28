@@ -58,7 +58,7 @@ export default function RootLayout({
           <ReportFormProvider>
             <WatchAreaProvider>
               <Header />
-              <main className="flex flex-col">{children}</main>
+              <main>{children}</main>
             </WatchAreaProvider>
           </ReportFormProvider>
         </AuthProvider>

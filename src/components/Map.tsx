@@ -42,8 +42,8 @@ function LocationControl() {
   }, [position, map])
 
   return (
-    <div className="leaflet-bottom leaflet-right" style={{ zIndex: 1000 }}>
-      <div className="leaflet-control mb-3 mr-3">
+    <div className="leaflet-bottom leaflet-left" style={{ zIndex: 1000 }}>
+      <div className="leaflet-control mb-3 ml-3">
         <button
           type="button"
           onClick={requestLocation}
@@ -170,14 +170,14 @@ export default function Map() {
             />
           ))}
 
-          <ZoomControl position="bottomleft" />
+          <ZoomControl position="bottomright" />
           <LocationControl />
           <MapResizeHandler trigger={sidebarOpen} />
           <ZoomToNewClosureHandler target={zoomTarget} />
         </MapContainer>
 
-        {/* Filter toggle button */}
-        <div className="absolute left-3 top-3 z-[1000]">
+        {/* Filter toggle button — offset below fixed header */}
+        <div className="absolute left-3 z-[1000]" style={{ top: 'calc(4rem + 0.75rem)' }}>
           <FilterToggleButton
             open={sidebarOpen}
             onClick={() => setSidebarOpen((o) => !o)}
