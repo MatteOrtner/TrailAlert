@@ -70,25 +70,6 @@ export function ClosurePopup({ closure }: Props) {
 
   const severity = SEVERITY_LABELS[closure.severity]
 
-  // Count directly from the votes table — always accurate regardless of triggers
-  async function refreshCounts() {
-    const supabase = createClient()
-    const [{ count: up }, { count: down }] = await Promise.all([
-      supabase
-        .from('votes')
-        .select('*', { count: 'exact', head: true })
-        .eq('closure_id', closure.id)
-        .eq('vote_type', 'confirm'),
-      supabase
-        .from('votes')
-        .select('*', { count: 'exact', head: true })
-        .eq('closure_id', closure.id)
-        .eq('vote_type', 'deny'),
-    ])
-    if (up !== null) setUpvotes(up)
-    if (down !== null) setDownvotes(down)
-  }
-
   async function handleVote(voteType: VoteType) {
     if (submitting) return
     setSubmitting(true)
@@ -96,7 +77,6 @@ export function ClosurePopup({ closure }: Props) {
 
     const supabase    = createClient()
     const fingerprint = getFingerprint()
-    let opError: unknown = null
 
     // --- Remove vote (clicking the same button again) ---
     if (voted === voteType) {
@@ -104,8 +84,11 @@ export function ClosurePopup({ closure }: Props) {
         .from('votes')
         .delete()
         .match({ closure_id: closure.id, anon_fingerprint: fingerprint })
-      opError = error
-      if (!error) {
+      if (error) {
+        setVoteError('Abstimmung fehlgeschlagen.')
+      } else {
+        if (voteType === 'confirm') setUpvotes(n => n - 1)
+        else setDownvotes(n => n - 1)
         setVoted(null)
         clearVote(closure.id)
       }
@@ -116,8 +99,11 @@ export function ClosurePopup({ closure }: Props) {
         .from('votes')
         .update({ vote_type: voteType })
         .match({ closure_id: closure.id, anon_fingerprint: fingerprint })
-      opError = error
-      if (!error) {
+      if (error) {
+        setVoteError('Abstimmung fehlgeschlagen.')
+      } else {
+        if (voteType === 'confirm') { setUpvotes(n => n + 1); setDownvotes(n => n - 1) }
+        else                        { setDownvotes(n => n + 1); setUpvotes(n => n - 1) }
         setVoted(voteType)
         saveVote(closure.id, voteType)
       }
@@ -129,19 +115,21 @@ export function ClosurePopup({ closure }: Props) {
         vote_type:        voteType,
         anon_fingerprint: fingerprint,
       })
-      opError = error
-      if (!error || (error as { code?: string }).code === '23505') {
+      if (!error) {
+        if (voteType === 'confirm') setUpvotes(n => n + 1)
+        else setDownvotes(n => n + 1)
         setVoted(voteType)
         saveVote(closure.id, voteType)
+      } else if (error.code === '23505') {
+        // Vote already exists in DB from another session — count already includes it,
+        // just sync the local voted state without touching counts
+        setVoted(voteType)
+        saveVote(closure.id, voteType)
+      } else {
+        setVoteError('Abstimmung fehlgeschlagen.')
       }
     }
 
-    if (opError && (opError as { code?: string }).code !== '23505') {
-      setVoteError('Abstimmung fehlgeschlagen.')
-    }
-
-    // Always sync counts from DB — no local arithmetic, no drift
-    await refreshCounts()
     setSubmitting(false)
   }
 
