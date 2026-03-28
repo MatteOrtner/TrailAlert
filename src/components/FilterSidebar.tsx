@@ -45,7 +45,7 @@ interface CheckboxProps {
 
 function FilterCheckbox({ checked, onChange, label, accent }: CheckboxProps) {
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 py-1.5 select-none">
+    <label className="flex cursor-pointer items-center gap-2.5 py-1.5 select-none" onClick={() => onChange(!checked)}>
       <span
         className="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors"
         style={{
