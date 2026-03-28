@@ -88,30 +88,15 @@ export function ClosurePopup({ closure }: Props) {
   }, [closure.id])
 
   async function handleVote(voteType: VoteType) {
-    if (submitting) return
+    if (submitting || voted === voteType) return
     setSubmitting(true)
     setVoteError(null)
 
     const supabase    = createClient()
     const fingerprint = getFingerprint()
 
-    // --- Remove vote (clicking the same button again) ---
-    if (voted === voteType) {
-      const { error } = await supabase
-        .from('votes')
-        .delete()
-        .match({ closure_id: closure.id, anon_fingerprint: fingerprint })
-      if (error) {
-        setVoteError('Abstimmung fehlgeschlagen.')
-      } else {
-        if (voteType === 'confirm') setUpvotes(n => n - 1)
-        else setDownvotes(n => n - 1)
-        setVoted(null)
-        clearVote(closure.id)
-      }
-
-    // --- Change vote (clicking the other button) ---
-    } else if (voted) {
+    // --- Change vote (already voted, clicking the other button) ---
+    if (voted) {
       const { error } = await supabase
         .from('votes')
         .update({ vote_type: voteType })
@@ -138,20 +123,8 @@ export function ClosurePopup({ closure }: Props) {
         setVoted(voteType)
         saveVote(closure.id, voteType)
       } else if (error.code === '23505') {
-        // Vote already exists in DB — local count may have drifted (e.g. a
-        // previous delete was silently blocked by RLS). Re-fetch the real
-        // counts so the display matches the DB exactly.
         setVoted(voteType)
         saveVote(closure.id, voteType)
-        const { data } = await supabase
-          .from('closures')
-          .select('upvotes, downvotes')
-          .eq('id', closure.id)
-          .single()
-        if (data) {
-          setUpvotes(data.upvotes)
-          setDownvotes(data.downvotes)
-        }
       } else {
         setVoteError('Abstimmung fehlgeschlagen.')
       }
@@ -222,10 +195,10 @@ export function ClosurePopup({ closure }: Props) {
             disabled={submitting}
             onClick={() => handleVote('confirm')}
             className={[
-              'flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
+              'flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors',
               voted === 'confirm'
-                ? 'bg-success/25 text-success ring-1 ring-success/50'
-                : 'bg-success/10 text-success hover:bg-success/20',
+                ? 'bg-success/25 text-success ring-1 ring-success/50 cursor-default'
+                : 'bg-success/10 text-success hover:bg-success/20 cursor-pointer',
             ].join(' ')}
           >
             <ThumbsUp className="h-3.5 w-3.5" />
@@ -237,10 +210,10 @@ export function ClosurePopup({ closure }: Props) {
             disabled={submitting}
             onClick={() => handleVote('deny')}
             className={[
-              'flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
+              'flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors',
               voted === 'deny'
-                ? 'bg-danger/25 text-danger ring-1 ring-danger/50'
-                : 'bg-danger/10 text-danger hover:bg-danger/20',
+                ? 'bg-danger/25 text-danger ring-1 ring-danger/50 cursor-default'
+                : 'bg-danger/10 text-danger hover:bg-danger/20 cursor-pointer',
             ].join(' ')}
           >
             <ThumbsDown className="h-3.5 w-3.5" />
