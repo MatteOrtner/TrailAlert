@@ -48,7 +48,6 @@ body {
   background: var(--bg-dark);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
-  overflow: hidden;
 }
 
 /* Prevent text size adjust on orientation change */
@@ -96,29 +95,13 @@ html {
 --------------------------------------------------------------------------- */
 
 .leaflet-container {
-  /* Match ESRI World Topo land background so unloaded tiles blend in */
   background: #e8e0d8 !important;
   font-family: var(--font-jakarta), system-ui, sans-serif;
+  touch-action: none;
 }
 
-.leaflet-tile-pane,
-.leaflet-tile-container {
-  background: #e8e0d8;
-}
-
-/* GPU layer only on the element Leaflet actually animates */
-.leaflet-zoom-animated {
-  will-change: transform;
-}
-
-/* Tile fade-in only when NOT animating — avoids frame drops */
-.leaflet-tile {
-  transition: opacity 150ms linear;
-}
-.leaflet-zoom-anim .leaflet-tile,
-.leaflet-dragging  .leaflet-tile {
-  transition: none;
-}
+/* Let Leaflet manage its own GPU/transform hints — overriding them
+   causes tile drop-outs on mobile due to GPU memory exhaustion */
 
 /* Popup — light card to match OpenTopoMap tiles */
 .leaflet-popup-content-wrapper {
