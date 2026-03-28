@@ -70,6 +70,19 @@ export function ClosurePopup({ closure }: Props) {
 
   const severity = SEVERITY_LABELS[closure.severity]
 
+  async function refreshCounts() {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('closures')
+      .select('upvotes, downvotes')
+      .eq('id', closure.id)
+      .single()
+    if (data) {
+      setUpvotes(data.upvotes)
+      setDownvotes(data.downvotes)
+    }
+  }
+
   async function handleVote(voteType: VoteType) {
     if (submitting) return
     setSubmitting(true)
@@ -87,8 +100,6 @@ export function ClosurePopup({ closure }: Props) {
       if (error) {
         setVoteError('Abstimmung fehlgeschlagen.')
       } else {
-        if (voteType === 'confirm') setUpvotes(n => n - 1)
-        else setDownvotes(n => n - 1)
         setVoted(null)
         clearVote(closure.id)
       }
@@ -102,8 +113,6 @@ export function ClosurePopup({ closure }: Props) {
       if (error) {
         setVoteError('Abstimmung fehlgeschlagen.')
       } else {
-        if (voteType === 'confirm') { setUpvotes(n => n + 1); setDownvotes(n => n - 1) }
-        else                        { setDownvotes(n => n + 1); setUpvotes(n => n - 1) }
         setVoted(voteType)
         saveVote(closure.id, voteType)
       }
@@ -116,20 +125,20 @@ export function ClosurePopup({ closure }: Props) {
         anon_fingerprint: fingerprint,
       })
       if (!error) {
-        if (voteType === 'confirm') setUpvotes(n => n + 1)
-        else setDownvotes(n => n + 1)
         setVoted(voteType)
         saveVote(closure.id, voteType)
       } else if (error.code === '23505') {
-        // Vote already exists in DB from another session — count already includes it,
-        // just sync the local voted state without touching counts
         setVoted(voteType)
         saveVote(closure.id, voteType)
       } else {
         setVoteError('Abstimmung fehlgeschlagen.')
+        setSubmitting(false)
+        return
       }
     }
 
+    // Re-fetch counts from closures table — kept accurate by DB trigger
+    await refreshCounts()
     setSubmitting(false)
   }
 
