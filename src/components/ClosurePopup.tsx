@@ -49,6 +49,10 @@ function saveVote(closureId: string, vote: VoteType) {
   localStorage.setItem(VOTE_KEY(closureId), vote)
 }
 
+function clearVote(closureId: string) {
+  localStorage.removeItem(VOTE_KEY(closureId))
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -67,32 +71,67 @@ export function ClosurePopup({ closure }: Props) {
   const severity = SEVERITY_LABELS[closure.severity]
 
   async function handleVote(voteType: VoteType) {
-    if (voted || submitting) return
+    if (submitting) return
     setSubmitting(true)
     setVoteError(null)
 
     const supabase    = createClient()
     const fingerprint = getFingerprint()
 
-    const { error } = await supabase.from('votes').insert({
-      closure_id:       closure.id,
-      vote_type:        voteType,
-      anon_fingerprint: fingerprint,
-    })
+    // --- Remove vote (clicking the same button again) ---
+    if (voted === voteType) {
+      const { error } = await supabase
+        .from('votes')
+        .delete()
+        .match({ closure_id: closure.id, anon_fingerprint: fingerprint })
 
-    if (error) {
-      // Unique constraint → already voted from another session
-      if (error.code === '23505') {
+      if (error) {
+        setVoteError('Abstimmung fehlgeschlagen.')
+      } else {
+        if (voteType === 'confirm') setUpvotes((n) => n - 1)
+        else setDownvotes((n) => n - 1)
+        setVoted(null)
+        clearVote(closure.id)
+      }
+
+    // --- Change vote (clicking the other button) ---
+    } else if (voted) {
+      const { error } = await supabase
+        .from('votes')
+        .update({ vote_type: voteType })
+        .match({ closure_id: closure.id, anon_fingerprint: fingerprint })
+
+      if (error) {
+        setVoteError('Abstimmung fehlgeschlagen.')
+      } else {
+        if (voteType === 'confirm') { setUpvotes((n) => n + 1); setDownvotes((n) => n - 1) }
+        else                        { setDownvotes((n) => n + 1); setUpvotes((n) => n - 1) }
         setVoted(voteType)
         saveVote(closure.id, voteType)
-      } else {
-        setVoteError('Abstimmung fehlgeschlagen.')
       }
+
+    // --- New vote ---
     } else {
-      if (voteType === 'confirm') setUpvotes((n) => n + 1)
-      else setDownvotes((n) => n + 1)
-      setVoted(voteType)
-      saveVote(closure.id, voteType)
+      const { error } = await supabase.from('votes').insert({
+        closure_id:       closure.id,
+        vote_type:        voteType,
+        anon_fingerprint: fingerprint,
+      })
+
+      if (error) {
+        if (error.code === '23505') {
+          // Voted from another session — sync local state
+          setVoted(voteType)
+          saveVote(closure.id, voteType)
+        } else {
+          setVoteError('Abstimmung fehlgeschlagen.')
+        }
+      } else {
+        if (voteType === 'confirm') setUpvotes((n) => n + 1)
+        else setDownvotes((n) => n + 1)
+        setVoted(voteType)
+        saveVote(closure.id, voteType)
+      }
     }
 
     setSubmitting(false)
@@ -157,15 +196,13 @@ export function ClosurePopup({ closure }: Props) {
         <div className="flex gap-2 pt-1">
           <button
             type="button"
-            disabled={!!voted || submitting}
+            disabled={submitting}
             onClick={() => handleVote('confirm')}
             className={[
-              'flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors',
+              'flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
               voted === 'confirm'
-                ? 'bg-success/20 text-success'
-                : voted
-                  ? 'opacity-40 cursor-not-allowed bg-success/10 text-success'
-                  : 'bg-success/10 text-success hover:bg-success/20 cursor-pointer',
+                ? 'bg-success/25 text-success ring-1 ring-success/50'
+                : 'bg-success/10 text-success hover:bg-success/20',
             ].join(' ')}
           >
             <ThumbsUp className="h-3.5 w-3.5" />
@@ -174,15 +211,13 @@ export function ClosurePopup({ closure }: Props) {
 
           <button
             type="button"
-            disabled={!!voted || submitting}
+            disabled={submitting}
             onClick={() => handleVote('deny')}
             className={[
-              'flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors',
+              'flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
               voted === 'deny'
-                ? 'bg-danger/20 text-danger'
-                : voted
-                  ? 'opacity-40 cursor-not-allowed bg-danger/10 text-danger'
-                  : 'bg-danger/10 text-danger hover:bg-danger/20 cursor-pointer',
+                ? 'bg-danger/25 text-danger ring-1 ring-danger/50'
+                : 'bg-danger/10 text-danger hover:bg-danger/20',
             ].join(' ')}
           >
             <ThumbsDown className="h-3.5 w-3.5" />
