@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   X, Locate, ChevronRight, ChevronLeft,
   Upload, Loader2, ImageIcon,
@@ -133,6 +134,7 @@ export function ReportForm() {
   const [dragOver, setDragOver]         = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const touchStartY  = useRef(0)
+  const router       = useRouter()
 
   // Register position-picked callback so Map.tsx can deliver tapped lat/lng
   onPositionPickedRef.current = (lat, lng) => {
@@ -283,13 +285,12 @@ export function ReportForm() {
       return
     }
 
-    // Small delay (100 ms) lets React finish any in-flight Realtime renders
-    // BEFORE the navigation tears down the component tree.  This prevents
-    // the Realtime INSERT event from racing with window.location and causing
-    // Leaflet DOM thrash + visible lag on mobile.
-    setTimeout(() => {
-      window.location.href = `/?closure=${closure.id}`
-    }, 100)
+    // Client-side navigation: the map component (and its Leaflet instance)
+    // stay fully mounted. The server component re-renders with the new
+    // ?closure= param, which passes targetClosureId down to Map, which
+    // opens the marker popup — zero map re-initialization.
+    close()
+    router.push(`/?closure=${closure.id}`)
   }
 
   // Shared input/textarea style
