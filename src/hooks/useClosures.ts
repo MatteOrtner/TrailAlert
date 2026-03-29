@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, startTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Closure, ClosureType, SeverityLevel } from '@/lib/types'
 
@@ -67,7 +67,11 @@ export function useClosures() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'closures' },
         (payload) => {
-          setAllClosures((prev) => [payload.new as Closure, ...prev])
+          // startTransition makes this a low-priority update — React can
+          // interrupt it to handle touch/scroll events first, preventing lag.
+          startTransition(() => {
+            setAllClosures((prev) => [payload.new as Closure, ...prev])
+          })
         }
       )
       .on(
@@ -75,18 +79,22 @@ export function useClosures() {
         { event: 'UPDATE', schema: 'public', table: 'closures' },
         (payload) => {
           const updated = payload.new as Closure
-          setAllClosures((prev) =>
-            updated.status === 'resolved'
-              ? prev.filter((c) => c.id !== updated.id)
-              : prev.map((c) => (c.id === updated.id ? updated : c))
-          )
+          startTransition(() => {
+            setAllClosures((prev) =>
+              updated.status === 'resolved'
+                ? prev.filter((c) => c.id !== updated.id)
+                : prev.map((c) => (c.id === updated.id ? updated : c))
+            )
+          })
         }
       )
       .on(
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'closures' },
         (payload) => {
-          setAllClosures((prev) => prev.filter((c) => c.id !== payload.old.id))
+          startTransition(() => {
+            setAllClosures((prev) => prev.filter((c) => c.id !== payload.old.id))
+          })
         }
       )
       .subscribe()
@@ -96,7 +104,9 @@ export function useClosures() {
     }
   }, [])
 
-  const closures = allClosures.filter((c) => {
+  // useMemo ensures the filtered array is only recomputed when allClosures
+  // or filters actually change — not on every parent re-render.
+  const closures = useMemo(() => allClosures.filter((c) => {
     if (!filters.types.includes(c.closure_type)) return false
     if (!filters.severities.includes(c.severity)) return false
 
@@ -109,7 +119,7 @@ export function useClosures() {
     if (filters.confirmedOnly && c.upvotes === 0) return false
 
     return true
-  })
+  }), [allClosures, filters])
 
   return {
     closures,

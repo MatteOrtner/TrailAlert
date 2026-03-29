@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useEffect } from 'react'
+import { memo, useMemo, useRef, useEffect } from 'react'
 import L from 'leaflet'
 import { Marker } from 'react-leaflet'
 import type { Marker as LeafletMarker } from 'leaflet'
@@ -41,7 +41,10 @@ interface Props {
   autoOpen?: boolean
 }
 
-export function ClosureMarker({ closure, autoOpen }: Props) {
+// React.memo: skip re-render when closure data and autoOpen haven't changed.
+// This is critical for performance — only the newly added marker re-renders
+// when a Realtime INSERT fires, not every existing marker.
+export const ClosureMarker = memo(function ClosureMarker({ closure, autoOpen }: Props) {
   const color     = SEVERITY_COLORS[closure.severity]
   const pulse     = isNew(closure.created_at)
   const icon      = useMemo(() => createIcon(color, pulse), [color, pulse])
@@ -64,4 +67,4 @@ export function ClosureMarker({ closure, autoOpen }: Props) {
       <ClosurePopup closure={closure} />
     </Marker>
   )
-}
+})

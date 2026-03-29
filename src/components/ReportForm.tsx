@@ -128,7 +128,8 @@ export function ReportForm() {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [photoError, setPhotoError]     = useState<string | null>(null)
-  const [submitting, setSubmitting]     = useState(false)
+  const [submitting,    setSubmitting]    = useState(false)
+  const [submitError,   setSubmitError]   = useState<string | null>(null)
   const [dragOver, setDragOver]         = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const touchStartY  = useRef(0)
@@ -228,6 +229,7 @@ export function ReportForm() {
   async function handleSubmit() {
     if (submitting || !form.position) return
     setSubmitting(true)
+    setSubmitError(null)
 
     const supabase = createClient()
     let photoUrl: string | null = null
@@ -271,13 +273,23 @@ export function ReportForm() {
     setSubmitting(false)
 
     if (insertError || !closure) {
-      setErrors({ title: `Fehler beim Speichern: ${insertError?.message ?? 'Unbekannt'}` })
-      setStep(1)
+      // Surface the error clearly at the top-level instead of silently
+      // overwriting the title field and jumping to step 1.
+      setSubmitError(
+        insertError?.message
+          ? `Speichern fehlgeschlagen: ${insertError.message}`
+          : 'Speichern fehlgeschlagen. Bitte versuche es erneut.'
+      )
       return
     }
 
-    // Reload to the closure URL — clears any Leaflet listener leaks and zooms to the new marker
-    window.location.href = `/?closure=${closure.id}`
+    // Small delay (100 ms) lets React finish any in-flight Realtime renders
+    // BEFORE the navigation tears down the component tree.  This prevents
+    // the Realtime INSERT event from racing with window.location and causing
+    // Leaflet DOM thrash + visible lag on mobile.
+    setTimeout(() => {
+      window.location.href = `/?closure=${closure.id}`
+    }, 100)
   }
 
   // Shared input/textarea style
@@ -564,6 +576,16 @@ export function ReportForm() {
           )}
 
         </div>
+
+        {/* Submit error banner */}
+        {submitError && (
+          <div
+            className="mx-5 mb-1 rounded-lg px-4 py-3 text-sm"
+            style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.35)' }}
+          >
+            {submitError}
+          </div>
+        )}
 
         {/* Footer actions (steps 1 and 2 only) */}
         {(step === 1 || step === 2) && (
