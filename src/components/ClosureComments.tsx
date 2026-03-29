@@ -56,7 +56,7 @@ export function ClosureComments({ closureId }: { closureId: string }) {
             e.stopPropagation()
             setExpanded(true)
           }}
-          className="flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 mb-1"
+          className="flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200 mb-1"
         >
           <MessageSquare className="h-3.5 w-3.5" />
           Kommentare / Updates ({loading ? '...' : comments.length})
@@ -66,7 +66,7 @@ export function ClosureComments({ closureId }: { closureId: string }) {
       {/* Expanded State */}
       <div className={`${expanded ? 'flex' : 'hidden'} flex-col gap-2`}>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
+          <span className="text-xs font-semibold" style={{ color: '#111827' }}>
             Kommentare ({comments.length})
           </span>
           <button
@@ -75,7 +75,7 @@ export function ClosureComments({ closureId }: { closureId: string }) {
               e.stopPropagation()
               setExpanded(false)
             }}
-            className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            className="text-xs text-gray-500 hover:text-gray-700"
           >
             Zuklappen
           </button>
@@ -90,8 +90,8 @@ export function ClosureComments({ closureId }: { closureId: string }) {
             <p className="text-xs italic text-gray-500 py-1">Noch keine Updates.</p>
           ) : (
             comments.map((c) => (
-              <div key={c.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-md p-2 flex flex-col gap-1">
-                <p className="text-xs text-gray-800 dark:text-gray-200 break-words">{c.text}</p>
+              <div key={c.id} className="bg-gray-100 rounded-md p-2 flex flex-col gap-1">
+                <p className="text-xs text-gray-800 break-words">{c.text}</p>
                 <span className="text-[10px] text-gray-500">
                   {formatDistanceToNow(new Date(c.created_at), { addSuffix: true, locale: de })}
                 </span>
@@ -109,8 +109,7 @@ export function ClosureComments({ closureId }: { closureId: string }) {
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Update schreiben..."
                 maxLength={500}
-                className="flex-1 text-xs rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 focus:outline-none focus:border-accent"
-                style={{ color: 'var(--text-primary)' }}
+                className="flex-1 text-xs rounded-md border border-gray-300 bg-white px-2 py-1.5 focus:outline-none focus:border-accent text-gray-800"
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
               />
