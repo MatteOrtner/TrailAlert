@@ -300,7 +300,6 @@ export function ReportForm() {
     color:        'var(--text-primary)',
     padding:      '8px 12px',
     fontSize:     14,
-    width:        '100%',
     outline:      'none',
   }
 
