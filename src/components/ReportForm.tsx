@@ -474,17 +474,19 @@ export function ReportForm() {
               </Field>
 
               <Field label="Voraussichtliches Ende">
-                <input
-                  type="date"
-                  value={form.expectedEnd}
-                  min={new Date().toISOString().split('T')[0]}
-                  onChange={(e) => set('expectedEnd', e.target.value)}
-                  style={{
-                    ...inputStyle,
-                    colorScheme: 'dark',
-                    minWidth:    0,
-                  }}
-                />
+                <div style={{ width: '100%', overflow: 'hidden' }}>
+                  <input
+                    type="date"
+                    value={form.expectedEnd}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => set('expectedEnd', e.target.value)}
+                    style={{
+                      ...inputStyle,
+                      colorScheme: 'dark',
+                      minWidth:    0,
+                    }}
+                  />
+                </div>
               </Field>
             </>
           )}
