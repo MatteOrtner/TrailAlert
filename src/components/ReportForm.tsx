@@ -482,6 +482,7 @@ export function ReportForm() {
                   style={{
                     ...inputStyle,
                     colorScheme: 'dark',
+                    minWidth:    0,
                   }}
                 />
               </Field>
