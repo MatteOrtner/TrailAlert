@@ -32,14 +32,11 @@ const SEVERITY_LABELS: Record<SeverityLevel, { label: string; color: string }> =
 function ClosureCard({
   closure,
   onResolved,
-  onDeleted,
 }: {
   closure:    Closure
   onResolved: (id: string) => void
-  onDeleted:  (id: string) => void
 }) {
   const [resolving, setResolving] = useState(false)
-  const [deleting,  setDeleting]  = useState(false)
   const [error,     setError]     = useState<string | null>(null)
 
   const severity = SEVERITY_LABELS[closure.severity]
@@ -53,17 +50,6 @@ function ClosureCard({
       .eq('id', closure.id)
     if (err) { setError('Fehler beim Markieren.'); setResolving(false) }
     else     { onResolved(closure.id) }
-  }
-
-  async function handleDelete() {
-    setDeleting(true)
-    setError(null)
-    const { error: err } = await createClient()
-      .from('closures')
-      .delete()
-      .eq('id', closure.id)
-    if (err) { setError('Fehler beim Löschen.'); setDeleting(false) }
-    else     { onDeleted(closure.id) }
   }
 
   return (
@@ -109,7 +95,7 @@ function ClosureCard({
       <div className="flex gap-2 pt-1">
         <button
           type="button"
-          disabled={resolving || deleting}
+          disabled={resolving}
           onClick={handleResolve}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors disabled:opacity-50"
           style={{ background: '#22c55e22', color: '#22c55e' }}
@@ -118,20 +104,7 @@ function ClosureCard({
             ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
             : <CheckCircle className="h-3.5 w-3.5" />
           }
-          {resolving ? 'Wird markiert…' : 'Gelöst'}
-        </button>
-        <button
-          type="button"
-          disabled={resolving || deleting}
-          onClick={handleDelete}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors disabled:opacity-50"
-          style={{ background: 'var(--danger)/15', color: 'var(--danger)' }}
-        >
-          {deleting
-            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            : <Trash2 className="h-3.5 w-3.5" />
-          }
-          {deleting ? 'Wird gelöscht…' : 'Löschen'}
+          {resolving ? 'Wird markiert…' : 'Als gelöst markieren'}
         </button>
       </div>
 
@@ -249,7 +222,6 @@ export default function MeineMeldungenPage() {
               key={c.id}
               closure={c}
               onResolved={(id) => setClosures((prev) => prev.filter((x) => x.id !== id))}
-              onDeleted={(id)  => setClosures((prev) => prev.filter((x) => x.id !== id))}
             />
           ))}
         </div>
