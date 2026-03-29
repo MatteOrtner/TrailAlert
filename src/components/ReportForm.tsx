@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import {
   X, Locate, MapPin, ChevronRight, ChevronLeft,
@@ -177,6 +177,12 @@ export function ReportForm() {
   if (geo.position && !form.position) {
     set('position', { lat: geo.position.latitude, lng: geo.position.longitude })
   }
+
+  // When returning to step 0, Leaflet needs a resize event to re-paint after
+  // being hidden (display:none collapses the map container to 0px)
+  useEffect(() => {
+    if (step === 0) window.dispatchEvent(new Event('resize'))
+  }, [step])
 
   // --- Photo file validation ---
   function applyPhoto(file: File) {
@@ -357,52 +363,54 @@ export function ReportForm() {
         <div className="flex flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto px-5 py-5">
 
           {/* ---- STEP 0: Position ---- */}
-          {isOpen && step === 0 && (
-            <>
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                Wo befindet sich die Sperre? Nutze GPS oder klicke auf die Karte.
-              </p>
+          {/* Keep mounted while form is open (CSS hide on other steps) to avoid
+              Leaflet teardown leaking passive touchmove listeners onto document */}
+          <div style={{ display: isOpen && step === 0 ? 'contents' : 'none' }}>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Wo befindet sich die Sperre? Nutze GPS oder klicke auf die Karte.
+            </p>
 
-              <button
-                type="button"
-                onClick={useGps}
-                disabled={geo.loading}
-                className="flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors"
-                style={{
-                  background:   'var(--accent)',
-                  color:        'var(--bg-dark)',
-                  border:       'none',
-                  cursor:       geo.loading ? 'not-allowed' : 'pointer',
-                  opacity:      geo.loading ? 0.7 : 1,
-                }}
-              >
-                {geo.loading
-                  ? <Loader2 className="h-4 w-4 animate-spin" />
-                  : <Locate className="h-4 w-4" />
-                }
-                Meinen Standort verwenden
-              </button>
+            <button
+              type="button"
+              onClick={useGps}
+              disabled={geo.loading}
+              className="flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors"
+              style={{
+                background:   'var(--accent)',
+                color:        'var(--bg-dark)',
+                border:       'none',
+                cursor:       geo.loading ? 'not-allowed' : 'pointer',
+                opacity:      geo.loading ? 0.7 : 1,
+              }}
+            >
+              {geo.loading
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <Locate className="h-4 w-4" />
+              }
+              Meinen Standort verwenden
+            </button>
 
-              {geo.error && (
-                <p className="text-xs" style={{ color: 'var(--danger)' }}>{geo.error}</p>
-              )}
+            {geo.error && (
+              <p className="text-xs" style={{ color: 'var(--danger)' }}>{geo.error}</p>
+            )}
 
-              <div className="flex items-center gap-3">
-                <div className="h-px flex-1" style={{ background: 'var(--border)' }} />
-                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>oder</span>
-                <div className="h-px flex-1" style={{ background: 'var(--border)' }} />
-              </div>
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1" style={{ background: 'var(--border)' }} />
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>oder</span>
+              <div className="h-px flex-1" style={{ background: 'var(--border)' }} />
+            </div>
 
+            {isOpen && (
               <PositionPicker
                 value={form.position}
                 onChange={(pos) => set('position', pos)}
               />
+            )}
 
-              {errors.position && (
-                <p className="text-xs" style={{ color: 'var(--danger)' }}>{errors.position}</p>
-              )}
-            </>
-          )}
+            {errors.position && (
+              <p className="text-xs" style={{ color: 'var(--danger)' }}>{errors.position}</p>
+            )}
+          </div>
 
           {/* ---- STEP 1: Details ---- */}
           {step === 1 && (
