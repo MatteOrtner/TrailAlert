@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Mail, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { X, Mail, Loader2, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthModal } from '@/contexts/AuthModalContext'
 
@@ -25,7 +25,6 @@ function GoogleIcon() {
 // Types
 // ---------------------------------------------------------------------------
 
-type Tab    = 'login' | 'register'
 type Status = 'idle' | 'loading' | 'sent' | 'error'
 
 // ---------------------------------------------------------------------------
@@ -34,7 +33,6 @@ type Status = 'idle' | 'loading' | 'sent' | 'error'
 
 export function AuthModal() {
   const { isOpen, close: onClose } = useAuthModal()
-  const [tab, setTab]       = useState<Tab>('login')
   const [email, setEmail]   = useState('')
   const [status, setStatus] = useState<Status>('idle')
   const [errMsg, setErrMsg] = useState('')
@@ -43,7 +41,6 @@ export function AuthModal() {
     setStatus('idle')
     setErrMsg('')
     setEmail('')
-    setTab('login')
   }
 
   function handleClose() {
@@ -125,15 +122,9 @@ export function AuthModal() {
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4"
              style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg"
-                  style={{ background: 'var(--accent)/15' }}>
-              <AlertTriangle className="h-4 w-4" style={{ color: 'var(--accent)' }} />
-            </span>
-            <span className="font-bold" style={{ color: 'var(--text-primary)' }}>
-              Trail<span style={{ color: 'var(--accent)' }}>Alert</span>
-            </span>
-          </div>
+          <span className="font-bold" style={{ color: 'var(--text-primary)' }}>
+            Anmelden oder registrieren
+          </span>
           <button
             type="button"
             onClick={handleClose}
@@ -172,25 +163,6 @@ export function AuthModal() {
             </div>
           ) : (
             <>
-              {/* Tabs */}
-              <div className="flex rounded-lg p-1" style={{ background: 'var(--bg-dark)' }}>
-                {(['login', 'register'] as Tab[]).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => { setTab(t); setStatus('idle'); setErrMsg('') }}
-                    className="flex-1 rounded-md py-1.5 text-sm font-medium transition-colors"
-                    style={{
-                      background: tab === t ? 'var(--bg-card)' : 'transparent',
-                      color:      tab === t ? 'var(--text-primary)' : 'var(--text-secondary)',
-                      boxShadow:  tab === t ? '0 1px 4px rgba(0,0,0,0.3)' : 'none',
-                    }}
-                  >
-                    {t === 'login' ? 'Anmelden' : 'Registrieren'}
-                  </button>
-                ))}
-              </div>
-
               {/* Google OAuth */}
               <button
                 type="button"
@@ -210,7 +182,7 @@ export function AuthModal() {
                 ) : (
                   <GoogleIcon />
                 )}
-                Mit Google {tab === 'login' ? 'anmelden' : 'registrieren'}
+                Mit Google anmelden
               </button>
 
               {/* Divider */}
