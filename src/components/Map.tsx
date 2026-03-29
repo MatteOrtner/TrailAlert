@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css'
 import { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, Circle, ZoomControl, useMap } from 'react-leaflet'
 import { Locate, Loader2 } from 'lucide-react'
-import { useClosures, isDefaultFilters } from '@/hooks/useClosures'
+import { useClosures, isDefaultFilters, DEFAULT_FILTERS } from '@/hooks/useClosures'
 import { useGeolocation } from '@/hooks/useGeolocation'
 import { useReportForm } from '@/contexts/ReportFormContext'
 import { useWatchAreaPanel } from '@/contexts/WatchAreaContext'
@@ -223,13 +223,39 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
 
         {/* Empty state */}
         {!loading && !error && closures.length === 0 && (
-          <div
-            className="pointer-events-none absolute bottom-6 left-1/2 z-[999] -translate-x-1/2 rounded-lg px-4 py-2 text-sm shadow-xl"
-            style={{ background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
-          >
-            {isDirty
-              ? 'Keine Sperren für diese Filter-Kombination'
-              : 'Keine aktiven Sperren in dieser Region'}
+          <div className="absolute inset-0 z-[998] flex items-center justify-center pointer-events-none">
+            <div
+              className="pointer-events-auto flex flex-col items-center gap-3 rounded-2xl px-6 py-5 shadow-2xl text-center mx-4"
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', maxWidth: 280 }}
+            >
+              {isDirty ? (
+                <>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Keine Sperren gefunden
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    Für diese Filter-Kombination gibt es keine aktiven Sperren.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setFilters(DEFAULT_FILTERS)}
+                    className="rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors"
+                    style={{ background: 'var(--accent)', color: 'var(--bg-dark)' }}
+                  >
+                    Filter zurücksetzen
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Keine aktiven Sperren
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    In dieser Region gibt es aktuell keine gemeldeten Sperren.
+                  </p>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>
