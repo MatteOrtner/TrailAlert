@@ -20,6 +20,6 @@ const Map = dynamic(() => import('./Map'), {
   ),
 })
 
-export function MapLoader() {
-  return <Map />
+export function MapLoader({ targetClosureId }: { targetClosureId?: string | null }) {
+  return <Map targetClosureId={targetClosureId} />
 }

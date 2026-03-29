@@ -96,7 +96,7 @@ function ZoomToNewClosureHandler({ target }: { target: [number, number] | null }
 // Main Map export
 // ---------------------------------------------------------------------------
 
-export default function Map() {
+export default function Map({ targetClosureId }: { targetClosureId?: string | null }) {
   const { closures, total, loading, error, filters, setFilters } = useClosures()
   const { onSuccessRef }                  = useReportForm()
   const { user }                          = useAuth()
@@ -104,10 +104,20 @@ export default function Map() {
   const { isOpen: watchPanelOpen }        = useWatchAreaPanel()
   const [sidebarOpen, setSidebarOpen]     = useState(false)
   const [zoomTarget, setZoomTarget]       = useState<[number, number] | null>(null)
+  const [openPopupFor, setOpenPopupFor]   = useState<string | null>(null)
   const isDirty = !isDefaultFilters(filters)
 
   // Register zoom callback in context so ReportForm can trigger it
   onSuccessRef.current = (lat, lng) => setZoomTarget([lat, lng])
+
+  // Pan to and open popup for a linked closure (e.g. from email notification)
+  useEffect(() => {
+    if (!targetClosureId || loading) return
+    const target = closures.find((c) => c.id === targetClosureId)
+    if (!target) return
+    setZoomTarget([target.latitude, target.longitude])
+    setOpenPopupFor(target.id)
+  }, [targetClosureId, closures, loading])
 
   return (
     <div className="flex h-full w-full overflow-hidden">
@@ -147,7 +157,11 @@ export default function Map() {
           />
 
           {closures.map((closure) => (
-            <ClosureMarker key={closure.id} closure={closure} />
+            <ClosureMarker
+              key={closure.id}
+              closure={closure}
+              autoOpen={closure.id === openPopupFor}
+            />
           ))}
 
           {/* Watch area circles — visible for logged-in users */}
