@@ -195,7 +195,7 @@ serve(async (req) => {
   // --- Send emails via Resend ---
   const resendKey = Deno.env.get('RESEND_API_KEY')!
   const appUrl    = Deno.env.get('APP_URL') ?? 'https://trailalert.vercel.app'
-  const fromAddr  = Deno.env.get('EMAIL_FROM') ?? 'TrailAlert <noreply@trailalert.at>'
+  const fromAddr  = Deno.env.get('EMAIL_FROM') ?? 'TrailAlert <onboarding@resend.dev>'
 
   const sends = matching.map(async (area) => {
     const email = emailMap.get(area.user_id)
