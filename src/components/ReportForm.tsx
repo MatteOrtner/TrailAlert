@@ -1,29 +1,15 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import dynamic from 'next/dynamic'
 import {
-  X, Locate, MapPin, ChevronRight, ChevronLeft,
-  Upload, Loader2, CheckCircle2, ImageIcon,
+  X, Locate, ChevronRight, ChevronLeft,
+  Upload, Loader2, ImageIcon,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useReportForm } from '@/contexts/ReportFormContext'
 import { useGeolocation } from '@/hooks/useGeolocation'
 import { useAuth } from '@/contexts/AuthContext'
 import type { ClosureType, SeverityLevel } from '@/lib/types'
-
-// PositionPicker is Leaflet — must be ssr:false; ReportForm is already 'use client'
-const PositionPicker = dynamic(() => import('./PositionPicker'), {
-  ssr: false,
-  loading: () => (
-    <div
-      className="flex items-center justify-center rounded-lg"
-      style={{ height: 220, background: 'var(--bg-dark)', border: '1px solid var(--border)' }}
-    >
-      <Loader2 className="h-5 w-5 animate-spin" style={{ color: 'var(--accent)' }} />
-    </div>
-  ),
-})
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -128,7 +114,11 @@ const INITIAL_FORM: FormState = {
 }
 
 export function ReportForm() {
-  const { isOpen, close, onSuccessRef, notifyReported } = useReportForm()
+  const {
+    isOpen, close,
+    isPickingLocation, setIsPickingLocation,
+    onPositionPickedRef,
+  } = useReportForm()
   const { user } = useAuth()
   const geo = useGeolocation()
 
@@ -143,8 +133,25 @@ export function ReportForm() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const touchStartY  = useRef(0)
 
+  // Register position-picked callback so Map.tsx can deliver tapped lat/lng
+  onPositionPickedRef.current = (lat, lng) => {
+    setForm((f) => ({ ...f, position: { lat, lng } }))
+    setErrors((e) => ({ ...e, position: undefined }))
+    setStep(1)
+  }
+
+  // Enter picking mode whenever we're on step 0 and the form is open
+  useEffect(() => {
+    if (isOpen && step === 0) {
+      setIsPickingLocation(true)
+    } else {
+      setIsPickingLocation(false)
+    }
+  }, [isOpen, step, setIsPickingLocation])
+
   function handleClose() {
     close()
+    setIsPickingLocation(false)
     // Reset after transition
     setTimeout(() => {
       setStep(0)
@@ -168,21 +175,15 @@ export function ReportForm() {
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }))
   }
 
-  // --- GPS ---
-  function useGps() {
-    geo.requestLocation()
-  }
-
-  // Sync GPS position once available
-  if (geo.position && !form.position) {
-    set('position', { lat: geo.position.latitude, lng: geo.position.longitude })
-  }
-
-  // When returning to step 0, Leaflet needs a resize event to re-paint after
-  // being hidden (display:none collapses the map container to 0px)
+  // --- GPS: when location arrives, set position and advance to step 1 ---
   useEffect(() => {
-    if (step === 0) window.dispatchEvent(new Event('resize'))
-  }, [step])
+    if (geo.position && isOpen && step === 0) {
+      setForm((f) => ({ ...f, position: { lat: geo.position!.latitude, lng: geo.position!.longitude } }))
+      setIsPickingLocation(false)
+      setStep(1)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geo.position])
 
   // --- Photo file validation ---
   function applyPhoto(file: File) {
@@ -212,14 +213,6 @@ export function ReportForm() {
   }
 
   // --- Step validation ---
-  function validateStep0(): boolean {
-    if (!form.position) {
-      setErrors({ position: 'Bitte Position auf der Karte setzen oder GPS verwenden.' })
-      return false
-    }
-    return true
-  }
-
   function validateStep1(): boolean {
     const errs: typeof errors = {}
     if (!form.title.trim()) {
@@ -229,11 +222,6 @@ export function ReportForm() {
     }
     setErrors(errs)
     return Object.keys(errs).length === 0
-  }
-
-  function nextStep() {
-    if (step === 0 && validateStep0()) setStep(1)
-    else if (step === 1 && validateStep1()) setStep(2)
   }
 
   // --- Submit ---
@@ -288,12 +276,8 @@ export function ReportForm() {
       return
     }
 
-    setStep('success')
-    onSuccessRef.current?.(closure.latitude, closure.longitude)
-    notifyReported()
-
-    // Auto-close after 4s
-    setTimeout(handleClose, 4000)
+    // Reload to the closure URL — clears any Leaflet listener leaks and zooms to the new marker
+    window.location.href = `/?closure=${closure.id}`
   }
 
   // Shared input/textarea style
@@ -316,24 +300,75 @@ export function ReportForm() {
 
   return (
     <>
-      {/* Backdrop */}
-      {isOpen && (
+      {/* ---- PICKING MODE (step 0): map is visible, bottom bar shown ---- */}
+      {isOpen && isPickingLocation && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-[1002] flex flex-col gap-2 px-4 pt-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
+          style={{
+            background: 'var(--bg-card)',
+            borderTop:  '1px solid var(--border)',
+            boxShadow:  '0 -8px 32px rgba(0,0,0,0.5)',
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                Sperre melden — Schritt 1/3
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                Tippe auf die Karte oder nutze GPS
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="flex h-9 w-9 items-center justify-center rounded-lg"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => geo.requestLocation()}
+            disabled={geo.loading}
+            className="flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold"
+            style={{
+              background: 'var(--accent)',
+              color:      'var(--bg-dark)',
+              opacity:    geo.loading ? 0.7 : 1,
+            }}
+          >
+            {geo.loading
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Locate className="h-4 w-4" />
+            }
+            Meinen Standort verwenden
+          </button>
+          {geo.error && (
+            <p className="text-xs" style={{ color: 'var(--danger)' }}>{geo.error}</p>
+          )}
+        </div>
+      )}
+
+      {/* Backdrop (only when panel is visible) */}
+      {isOpen && !isPickingLocation && (
         <div
           className="fixed inset-0 z-[1001] bg-black/50 backdrop-blur-sm sm:bg-black/30"
           onClick={handleClose}
         />
       )}
 
-      {/* Panel */}
+      {/* Panel — hidden during location picking, visible for steps 1+ */}
       <aside
         className="fixed inset-y-0 right-0 z-[1002] flex w-full flex-col sm:w-[480px]"
         style={{
           background:    'var(--bg-card)',
           borderLeft:    '1px solid var(--border)',
           boxShadow:     '-8px 0 32px rgba(0,0,0,0.5)',
-          transform:     isOpen ? 'translateX(0)' : 'translateX(100%)',
+          transform:     isOpen && !isPickingLocation ? 'translateX(0)' : 'translateX(100%)',
           transition:    'transform 300ms ease-in-out',
-          pointerEvents: isOpen ? 'auto' : 'none',
+          pointerEvents: isOpen && !isPickingLocation ? 'auto' : 'none',
         }}
       >
         {/* Header — swipe down to close on mobile */}
@@ -361,56 +396,6 @@ export function ReportForm() {
 
         {/* Body */}
         <div className="flex flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto px-5 py-5">
-
-          {/* ---- STEP 0: Position ---- */}
-          {/* Keep mounted while form is open (CSS hide on other steps) to avoid
-              Leaflet teardown leaking passive touchmove listeners onto document */}
-          <div style={{ display: isOpen && step === 0 ? 'contents' : 'none' }}>
-            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Wo befindet sich die Sperre? Nutze GPS oder klicke auf die Karte.
-            </p>
-
-            <button
-              type="button"
-              onClick={useGps}
-              disabled={geo.loading}
-              className="flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors"
-              style={{
-                background:   'var(--accent)',
-                color:        'var(--bg-dark)',
-                border:       'none',
-                cursor:       geo.loading ? 'not-allowed' : 'pointer',
-                opacity:      geo.loading ? 0.7 : 1,
-              }}
-            >
-              {geo.loading
-                ? <Loader2 className="h-4 w-4 animate-spin" />
-                : <Locate className="h-4 w-4" />
-              }
-              Meinen Standort verwenden
-            </button>
-
-            {geo.error && (
-              <p className="text-xs" style={{ color: 'var(--danger)' }}>{geo.error}</p>
-            )}
-
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1" style={{ background: 'var(--border)' }} />
-              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>oder</span>
-              <div className="h-px flex-1" style={{ background: 'var(--border)' }} />
-            </div>
-
-            {isOpen && (
-              <PositionPicker
-                value={form.position}
-                onChange={(pos) => set('position', pos)}
-              />
-            )}
-
-            {errors.position && (
-              <p className="text-xs" style={{ color: 'var(--danger)' }}>{errors.position}</p>
-            )}
-          </div>
 
           {/* ---- STEP 1: Details ---- */}
           {step === 1 && (
@@ -578,58 +563,28 @@ export function ReportForm() {
             </>
           )}
 
-          {/* ---- SUCCESS ---- */}
-          {step === 'success' && (
-            <div className="flex flex-1 flex-col items-center justify-center gap-4 py-10 text-center">
-              <div
-                className="flex h-16 w-16 items-center justify-center rounded-full"
-                style={{ background: 'var(--success)/15' }}
-              >
-                <CheckCircle2 className="h-9 w-9" style={{ color: 'var(--success)' }} />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
-                  Danke für deine Meldung!
-                </p>
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  Deine Sperre ist jetzt auf der Karte sichtbar. Die Community kann sie bestätigen oder widerrufen.
-                </p>
-              </div>
-              <div className="mt-2 flex items-center gap-1.5 rounded-full px-3 py-1"
-                   style={{ background: 'var(--bg-dark)', border: '1px solid var(--border)' }}>
-                <MapPin className="h-3.5 w-3.5" style={{ color: 'var(--accent)' }} />
-                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  Karte zoomt auf deine Meldung
-                </span>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Footer actions */}
-        {step !== 'success' && (
+        {/* Footer actions (steps 1 and 2 only) */}
+        {(step === 1 || step === 2) && (
           <div
             className="flex items-center justify-between gap-3 px-5 py-4"
             style={{ borderTop: '1px solid var(--border)' }}
           >
-            {step > 0 ? (
-              <button
-                type="button"
-                onClick={() => setStep((s) => (s as number) - 1 as Step)}
-                className="flex items-center gap-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors"
-                style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Zurück
-              </button>
-            ) : (
-              <div />
-            )}
+            <button
+              type="button"
+              onClick={() => setStep((s) => (s as number) - 1 as Step)}
+              className="flex items-center gap-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors"
+              style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Zurück
+            </button>
 
-            {step < 2 ? (
+            {step === 1 ? (
               <button
                 type="button"
-                onClick={nextStep}
+                onClick={() => { if (validateStep1()) setStep(2) }}
                 className="flex items-center gap-1 rounded-lg px-5 py-3 text-sm font-semibold transition-colors"
                 style={{ background: 'var(--accent)', color: 'var(--bg-dark)', border: 'none' }}
               >

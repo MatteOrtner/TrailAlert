@@ -3,7 +3,7 @@
 import 'leaflet/dist/leaflet.css'
 
 import { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, Circle, ZoomControl, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Circle, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
 import { Locate, Loader2 } from 'lucide-react'
 import { useClosures, isDefaultFilters, DEFAULT_FILTERS } from '@/hooks/useClosures'
 import { useGeolocation } from '@/hooks/useGeolocation'
@@ -68,6 +68,25 @@ function LocationControl() {
 }
 
 // ---------------------------------------------------------------------------
+// Lets the user tap the main map to pick a position (for the report form)
+// ---------------------------------------------------------------------------
+
+function MapPositionPicker() {
+  const { onPositionPickedRef, setIsPickingLocation } = useReportForm()
+
+  useMapEvents({
+    click(e) {
+      if (onPositionPickedRef.current) {
+        onPositionPickedRef.current(e.latlng.lat, e.latlng.lng)
+        setIsPickingLocation(false)
+      }
+    },
+  })
+
+  return null
+}
+
+// ---------------------------------------------------------------------------
 // Re-renders Leaflet after sidebar resize transition (310ms > 300ms CSS)
 // ---------------------------------------------------------------------------
 
@@ -98,7 +117,7 @@ function ZoomToNewClosureHandler({ target }: { target: [number, number] | null }
 
 export default function Map({ targetClosureId }: { targetClosureId?: string | null }) {
   const { closures, total, loading, error, filters, setFilters } = useClosures()
-  const { onSuccessRef }                  = useReportForm()
+  const { onSuccessRef, isPickingLocation }  = useReportForm()
   const { user }                          = useAuth()
   const { areas }                         = useWatchAreas()
   const { isOpen: watchPanelOpen }        = useWatchAreaPanel()
@@ -185,7 +204,25 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
           <LocationControl />
           <MapResizeHandler trigger={sidebarOpen} />
           <ZoomToNewClosureHandler target={zoomTarget} />
+          {isPickingLocation && <MapPositionPicker />}
         </MapContainer>
+
+        {/* Crosshair overlay shown while the user picks a location for a new report */}
+        {isPickingLocation && (
+          <div
+            className="pointer-events-none absolute inset-0 z-[999] flex items-center justify-center"
+            style={{ paddingBottom: 100 }}
+          >
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+              <circle cx="18" cy="18" r="10" stroke="#f59e0b" strokeWidth="2.5" fill="none" opacity="0.9"/>
+              <line x1="18" y1="0" x2="18" y2="10" stroke="#f59e0b" strokeWidth="2" opacity="0.9"/>
+              <line x1="18" y1="26" x2="18" y2="36" stroke="#f59e0b" strokeWidth="2" opacity="0.9"/>
+              <line x1="0" y1="18" x2="10" y2="18" stroke="#f59e0b" strokeWidth="2" opacity="0.9"/>
+              <line x1="26" y1="18" x2="36" y2="18" stroke="#f59e0b" strokeWidth="2" opacity="0.9"/>
+              <circle cx="18" cy="18" r="2.5" fill="#f59e0b" opacity="0.9"/>
+            </svg>
+          </div>
+        )}
 
         {/* Filter toggle button — offset below fixed header */}
         <div className="absolute left-3 z-[1000]" style={{ top: 'calc(4rem + 0.75rem)' }}>
