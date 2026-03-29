@@ -40,3 +40,11 @@ export interface WatchArea {
   notify_email: boolean
   created_at: string
 }
+
+export interface ClosureComment {
+  id: string
+  closure_id: string
+  user_id: string
+  text: string
+  created_at: string
+}

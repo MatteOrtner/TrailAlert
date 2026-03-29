@@ -9,6 +9,7 @@ import { ThumbsUp, ThumbsDown, Clock, CalendarX, CheckCircle, X, Share2 } from '
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Closure, ClosureType, SeverityLevel, VoteType } from '@/lib/types'
+import { ClosureComments } from './ClosureComments'
 
 // ---------------------------------------------------------------------------
 // Label maps (German UI)
@@ -311,6 +312,9 @@ export function ClosurePopup({ closure }: Props) {
             {copied ? 'Link kopiert!' : 'Sperre teilen'}
           </button>
         </div>
+
+        {/* Comments Section */}
+        <ClosureComments closureId={closure.id} />
 
         {voteError && (
           <p className="text-xs text-danger">{voteError}</p>
