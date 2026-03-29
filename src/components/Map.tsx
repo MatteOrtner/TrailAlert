@@ -112,6 +112,34 @@ function ZoomToNewClosureHandler({ target }: { target: [number, number] | null }
 }
 
 // ---------------------------------------------------------------------------
+// Pauses marker pulse animations during map movement.
+// Each animated .ta-marker-ring element forces the browser to maintain a
+// separate GPU compositor layer. At high zoom with several markers on screen
+// this causes GPU memory pressure and frame-rate drops on mobile.
+// Pausing the animation removes those extra layers while the map is moving.
+// ---------------------------------------------------------------------------
+
+function MapMovementTracker() {
+  const map = useMap()
+  useEffect(() => {
+    const container = map.getContainer()
+    const start = () => container.classList.add('leaflet-map-moving')
+    const end   = () => container.classList.remove('leaflet-map-moving')
+    map.on('movestart', start)
+    map.on('zoomstart', start)
+    map.on('moveend',   end)
+    map.on('zoomend',   end)
+    return () => {
+      map.off('movestart', start)
+      map.off('zoomstart', start)
+      map.off('moveend',   end)
+      map.off('zoomend',   end)
+    }
+  }, [map])
+  return null
+}
+
+// ---------------------------------------------------------------------------
 // Main Map export
 // ---------------------------------------------------------------------------
 
@@ -201,6 +229,7 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
           ))}
 
           <ZoomControl position="bottomright" />
+          <MapMovementTracker />
           <LocationControl />
           <MapResizeHandler trigger={sidebarOpen} />
           <ZoomToNewClosureHandler target={zoomTarget} />

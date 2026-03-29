@@ -90,6 +90,14 @@ html {
   100% { transform: scale(2.2); opacity: 0; }
 }
 
+/* Pause the pulse animation while the map is panning or zooming.
+   Each animated .ta-marker-ring element forces the browser to maintain a
+   separate compositor layer. Pausing during movement removes those extra
+   layers so the GPU can focus entirely on moving the map tiles. */
+.leaflet-map-moving .ta-marker-ring {
+  animation-play-state: paused;
+}
+
 /* ---------------------------------------------------------------------------
    Leaflet — UI overrides (tile-neutral: works with Voyager or topo tiles)
 --------------------------------------------------------------------------- */
