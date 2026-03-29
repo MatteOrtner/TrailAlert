@@ -5,6 +5,7 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { ReportFormProvider } from '@/contexts/ReportFormContext'
 import { WatchAreaProvider } from '@/contexts/WatchAreaContext'
 import { Header } from '@/components/Header'
+import { WatchAreaManager } from '@/components/WatchAreaManager'
 
 const jakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -63,6 +64,7 @@ export default function RootLayout({
           <ReportFormProvider>
             <WatchAreaProvider>
               <Header />
+              <WatchAreaManager />
               <main>{children}</main>
             </WatchAreaProvider>
           </ReportFormProvider>

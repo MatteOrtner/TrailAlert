@@ -14,7 +14,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import { ClosureMarker } from './ClosureMarker'
 import { FilterSidebar, FilterToggleButton } from './FilterSidebar'
 import { ReportForm } from './ReportForm'
-import { WatchAreaManager } from './WatchAreaManager'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -224,8 +223,6 @@ export default function Map() {
       {/* Report form slide-over */}
       <ReportForm />
 
-      {/* Watch area manager slide-over */}
-      <WatchAreaManager />
     </div>
   )
 }
