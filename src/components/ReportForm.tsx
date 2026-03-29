@@ -353,7 +353,7 @@ export function ReportForm() {
         </div>
 
         {/* Body */}
-        <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 py-5">
+        <div className="flex flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto px-5 py-5">
 
           {/* ---- STEP 0: Position ---- */}
           {step === 0 && (
