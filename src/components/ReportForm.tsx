@@ -357,7 +357,7 @@ export function ReportForm() {
         <div className="flex flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto px-5 py-5">
 
           {/* ---- STEP 0: Position ---- */}
-          {step === 0 && (
+          {isOpen && step === 0 && (
             <>
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Wo befindet sich die Sperre? Nutze GPS oder klicke auf die Karte.
