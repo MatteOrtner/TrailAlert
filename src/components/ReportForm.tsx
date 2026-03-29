@@ -322,11 +322,12 @@ export function ReportForm() {
       <aside
         className="fixed inset-y-0 right-0 z-[1002] flex w-full flex-col sm:w-[480px]"
         style={{
-          background:  'var(--bg-card)',
-          borderLeft:  '1px solid var(--border)',
-          boxShadow:   '-8px 0 32px rgba(0,0,0,0.5)',
-          transform:   isOpen ? 'translateX(0)' : 'translateX(100%)',
-          transition:  'transform 300ms ease-in-out',
+          background:    'var(--bg-card)',
+          borderLeft:    '1px solid var(--border)',
+          boxShadow:     '-8px 0 32px rgba(0,0,0,0.5)',
+          transform:     isOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition:    'transform 300ms ease-in-out',
+          pointerEvents: isOpen ? 'auto' : 'none',
         }}
       >
         {/* Header — swipe down to close on mobile */}
