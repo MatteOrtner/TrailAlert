@@ -267,7 +267,7 @@ export function ReportForm() {
         expected_end: form.expectedEnd || null,
         photo_url:    photoUrl,
         reported_by:  null,      // anonymous
-        status:       'unconfirmed',
+        status:       'active',
       })
       .select()
       .single()

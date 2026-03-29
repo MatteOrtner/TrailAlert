@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from 'react'
 import { Popup } from 'react-leaflet'
 import { formatDistanceToNow, format } from 'date-fns'
 import { de } from 'date-fns/locale'
-import { ThumbsUp, ThumbsDown, Clock, CalendarX } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, Clock, CalendarX, CheckCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/contexts/AuthContext'
 import type { Closure, ClosureType, SeverityLevel, VoteType } from '@/lib/types'
 
 // ---------------------------------------------------------------------------
@@ -58,9 +59,30 @@ interface Props {
 }
 
 export function ClosurePopup({ closure }: Props) {
+  const { user } = useAuth()
   const [voted, setVoted]           = useState<VoteType | null>(() => getSavedVote(closure.id))
   const [submitting, setSubmitting] = useState(false)
   const [voteError, setVoteError]   = useState<string | null>(null)
+  const [resolving, setResolving]   = useState(false)
+  const [resolveError, setResolveError] = useState<string | null>(null)
+
+  const isOwner = !!user && user.id === closure.reported_by
+
+  async function handleResolve() {
+    if (resolving) return
+    setResolving(true)
+    setResolveError(null)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('closures')
+      .update({ status: 'resolved' })
+      .eq('id', closure.id)
+    if (error) {
+      setResolveError('Konnte nicht als gelöst markiert werden.')
+      setResolving(false)
+    }
+    // On success, realtime removes the marker automatically — no local state needed
+  }
   // Optimistic deltas: reset to 0 once realtime updates the prop counts
   const [delta, setDelta]           = useState<{ confirm: number; deny: number }>({ confirm: 0, deny: 0 })
 
@@ -225,6 +247,24 @@ export function ClosurePopup({ closure }: Props) {
 
         {voteError && (
           <p className="text-xs text-danger">{voteError}</p>
+        )}
+
+        {/* Resolve button — only visible to the reporter */}
+        {isOwner && (
+          <div className="border-t pt-2" style={{ borderColor: '#e5e7eb' }}>
+            <button
+              type="button"
+              disabled={resolving}
+              onClick={handleResolve}
+              className="flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors bg-green-500/10 text-green-600 hover:bg-green-500/20 cursor-pointer disabled:opacity-50"
+            >
+              <CheckCircle className="h-3.5 w-3.5" />
+              {resolving ? 'Wird markiert…' : 'Als gelöst markieren'}
+            </button>
+            {resolveError && (
+              <p className="mt-1 text-xs text-danger">{resolveError}</p>
+            )}
+          </div>
         )}
       </div>
     </Popup>
