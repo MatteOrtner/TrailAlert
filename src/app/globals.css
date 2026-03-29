@@ -104,7 +104,7 @@ html {
 
 /* Also strip the box-shadow from the dot during movement to speed up rasterization */
 .leaflet-map-moving .ta-marker-dot {
-  box-shadow: 0 0 0 rgba(0,0,0,0) !important;
+  box-shadow: none !important;
 }
 
 /* ---------------------------------------------------------------------------
@@ -115,6 +115,20 @@ html {
   background: #f8f8f5 !important;
   font-family: var(--font-jakarta), system-ui, sans-serif;
   touch-action: none;
+}
+
+/* 
+ * iOS SAFARI FIX: 
+ * Safari has a notorious GPU composting bug when zooming map layers dynamically.
+ * Forcing hardware translation and will-change tells WebKit to retain 
+ * dedicated texture memory for tiles instead of repainting every zoom tick. 
+ */
+.leaflet-pane,
+.leaflet-zoom-animated,
+.leaflet-control {
+  -webkit-transform: translate3d(0,0,0);
+  transform: translate3d(0,0,0);
+  will-change: transform;
 }
 
 /* Let Leaflet manage its own GPU/transform hints — overriding them
