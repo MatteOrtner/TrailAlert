@@ -27,7 +27,7 @@ export default async function AdminPage() {
   }
 
   return (
-    <div className="flex h-full w-full flex-col overflow-y-auto bg-bg-dark px-4 pb-8 pt-24 sm:px-8">
+    <div className="flex w-full flex-col overflow-y-auto bg-bg-dark px-4 pb-8 pt-24 sm:px-8" style={{ height: '100svh' }}>
       <div className="mx-auto w-full max-w-6xl">
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
