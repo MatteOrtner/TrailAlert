@@ -4,14 +4,43 @@ import { useState } from 'react'
 import { AlertTriangle, MapPin, Plus, Menu, X } from 'lucide-react'
 import { useReportForm } from '@/contexts/ReportFormContext'
 import { AuthButton, AuthButtonMobile } from './AuthButton'
+import { useAuth } from '@/contexts/AuthContext'
+import { useOnboarding } from '@/hooks/useOnboarding'
+import { OnboardingSheet } from './OnboardingSheet'
+import { AuthModal } from './AuthModal'
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const { open: openReport } = useReportForm()
+  const { user } = useAuth()
+  const { hasSeen, markSeen } = useOnboarding()
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [authModalOpen, setAuthModalOpen] = useState(false)
 
   function handleReport() {
     setMenuOpen(false)
+    if (!hasSeen && !user) {
+      setShowOnboarding(true)
+      return
+    }
     openReport()
+  }
+
+  function handleOnboardingSignIn() {
+    markSeen()
+    setShowOnboarding(false)
+    setAuthModalOpen(true)
+  }
+
+  function handleOnboardingAnonymous() {
+    markSeen()
+    setShowOnboarding(false)
+    openReport()
+  }
+
+  function handleOnboardingDismiss() {
+    // Do NOT call markSeen — sheet reappears on next Melden tap
+    setShowOnboarding(false)
   }
 
   return (
@@ -83,6 +112,15 @@ export function Header() {
           <AuthButtonMobile onClose={() => setMenuOpen(false)} />
         </div>
       )}
+
+      {showOnboarding && (
+        <OnboardingSheet
+          onSignIn={handleOnboardingSignIn}
+          onAnonymous={handleOnboardingAnonymous}
+          onDismiss={handleOnboardingDismiss}
+        />
+      )}
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
     </header>
   )
 }
