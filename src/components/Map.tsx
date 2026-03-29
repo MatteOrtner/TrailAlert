@@ -193,6 +193,7 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
             open={sidebarOpen}
             onClick={() => setSidebarOpen((o) => !o)}
             isDirty={isDirty}
+            count={closures.length}
           />
         </div>
 

@@ -329,22 +329,29 @@ export interface FilterToggleButtonProps {
   open:    boolean
   onClick: () => void
   isDirty: boolean
+  count:   number
 }
 
-export function FilterToggleButton({ open, onClick, isDirty }: FilterToggleButtonProps) {
+export function FilterToggleButton({ open, onClick, isDirty, count }: FilterToggleButtonProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       title="Filter öffnen"
-      className="relative flex h-11 w-11 items-center justify-center rounded-lg shadow-lg transition-colors"
+      className="relative flex h-11 items-center justify-center gap-2 rounded-lg px-3 shadow-lg transition-colors"
       style={{
         background:  open ? 'var(--accent)' : 'var(--bg-card)',
         border:      `1px solid ${open ? 'var(--accent)' : 'var(--border)'}`,
         color:       open ? 'var(--bg-dark)' : 'var(--text-secondary)',
       }}
     >
-      <SlidersHorizontal className="h-5 w-5" />
+      <SlidersHorizontal className="h-5 w-5 shrink-0" />
+      <span
+        className="text-xs font-semibold tabular-nums"
+        style={{ color: open ? 'var(--bg-dark)' : isDirty ? 'var(--accent)' : 'var(--text-secondary)' }}
+      >
+        {count}
+      </span>
       {isDirty && !open && (
         <span
           className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2"
