@@ -185,13 +185,9 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
           center={[46.83, 12.76]}
           zoom={11}
           minZoom={6}
-          className="h-full w-full"
+          maxZoom={18}
+          className="h-full w-full outline-none"
           zoomControl={false}
-          zoomSnap={0.5}
-          zoomDelta={0.5}
-          wheelDebounceTime={0}
-          inertiaDeceleration={2500}
-          easeLinearity={0.35}
         >
           <TileLayer
             url={TILE_URL}
