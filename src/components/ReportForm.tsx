@@ -291,6 +291,9 @@ export function ReportForm() {
 
   // Shared input/textarea style
   const inputStyle: React.CSSProperties = {
+    width:        '100%',
+    maxWidth:     '100%',
+    boxSizing:    'border-box',
     background:   'var(--bg-dark)',
     border:       '1px solid var(--border)',
     borderRadius: 8,
