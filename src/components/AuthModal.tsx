@@ -123,7 +123,7 @@ export function AuthModal() {
         <div className="flex items-center justify-between px-6 pt-5 pb-4"
              style={{ borderBottom: '1px solid var(--border)' }}>
           <span className="font-bold" style={{ color: 'var(--text-primary)' }}>
-            Anmelden oder registrieren
+            Willkommen bei TrailAlert
           </span>
           <button
             type="button"
