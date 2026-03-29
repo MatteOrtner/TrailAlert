@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { Popup } from 'react-leaflet'
 import { formatDistanceToNow, format } from 'date-fns'
 import { de } from 'date-fns/locale'
-import { ThumbsUp, ThumbsDown, Clock, CalendarX, CheckCircle, Trash2, X } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, Clock, CalendarX, CheckCircle, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Closure, ClosureType, SeverityLevel, VoteType } from '@/lib/types'
@@ -66,7 +66,6 @@ export function ClosurePopup({ closure }: Props) {
   const [voteError, setVoteError]   = useState<string | null>(null)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [resolving, setResolving]       = useState(false)
-  const [deleting, setDeleting]     = useState(false)
   const [ownerError, setOwnerError] = useState<string | null>(null)
 
   const isOwner = !!user && user.id === closure.reported_by
@@ -83,22 +82,6 @@ export function ClosurePopup({ closure }: Props) {
     if (error) {
       setOwnerError('Konnte nicht als gelöst markiert werden.')
       setResolving(false)
-    }
-    // On success, realtime removes the marker automatically — no local state needed
-  }
-
-  async function handleDelete() {
-    if (deleting) return
-    setDeleting(true)
-    setOwnerError(null)
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('closures')
-      .delete()
-      .eq('id', closure.id)
-    if (error) {
-      setOwnerError('Löschen fehlgeschlagen.')
-      setDeleting(false)
     }
     // On success, realtime removes the marker automatically — no local state needed
   }
@@ -304,21 +287,12 @@ export function ClosurePopup({ closure }: Props) {
           <div className="border-t pt-2 flex gap-2" style={{ borderColor: '#e5e7eb' }}>
             <button
               type="button"
-              disabled={resolving || deleting}
+              disabled={resolving}
               onClick={handleResolve}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors bg-green-500/10 text-green-600 hover:bg-green-500/20 cursor-pointer disabled:opacity-50"
             >
               <CheckCircle className="h-3.5 w-3.5" />
-              {resolving ? 'Wird markiert…' : 'Gelöst'}
-            </button>
-            <button
-              type="button"
-              disabled={resolving || deleting}
-              onClick={handleDelete}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors bg-danger/10 text-danger hover:bg-danger/20 cursor-pointer disabled:opacity-50"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              {deleting ? 'Wird gelöscht…' : 'Löschen'}
+              {resolving ? 'Wird markiert…' : 'Als gelöst markieren'}
             </button>
           </div>
         )}
