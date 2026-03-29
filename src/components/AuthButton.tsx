@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { LogIn, LogOut, Map, Bell, Settings, ChevronDown, Loader2 } from 'lucide-react'
+import { LogIn, LogOut, Map, Bell, Settings, ChevronDown, Loader2, ShieldAlert } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWatchAreaPanel } from '@/contexts/WatchAreaContext'
 import { useAuthModal } from '@/contexts/AuthModalContext'
+import { ADMIN_EMAILS } from '@/lib/constants'
 
 // ---------------------------------------------------------------------------
 // Avatar — shows first letter of email or display name
@@ -174,6 +175,19 @@ export function AuthButton() {
             </a>
           ))}
 
+          {/* Admin link */}
+          {user.email && ADMIN_EMAILS.includes(user.email) && (
+            <a
+              href="/admin"
+              onClick={() => setDropdown(false)}
+              className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium transition-colors hover:bg-bg-card-hover"
+              style={{ color: 'var(--accent)' }}
+            >
+              <ShieldAlert className="h-4 w-4" />
+              Admin-Bereich
+            </a>
+          )}
+
           {/* Sign out */}
           <div style={{ borderTop: '1px solid var(--border)', marginTop: 4, paddingTop: 4 }}>
             <button
@@ -275,6 +289,19 @@ export function AuthButtonMobile({ onClose }: { onClose: () => void }) {
           {label}
         </a>
       ))}
+
+      {/* Admin Link Mobile */}
+      {user.email && ADMIN_EMAILS.includes(user.email) && (
+        <a
+          href="/admin"
+          onClick={onClose}
+          className="flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm font-medium transition-colors hover:bg-bg-dark"
+          style={{ color: 'var(--accent)' }}
+        >
+          <ShieldAlert className="h-4 w-4" />
+          Admin-Bereich
+        </a>
+      )}
 
       {/* Sign Out */}
       <button

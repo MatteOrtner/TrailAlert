@@ -1,0 +1,237 @@
+diff --git a/src/components/Map.tsx b/src/components/Map.tsx
+index 6ebb2eb..b2dd1fb 100644
+--- a/src/components/Map.tsx
++++ b/src/components/Map.tsx
+@@ -3,9 +3,9 @@
+ import 'leaflet/dist/leaflet.css'
+ 
+ import { useEffect, useState } from 'react'
+-import { MapContainer, TileLayer, Circle, ZoomControl, useMap } from 'react-leaflet'
++import { MapContainer, TileLayer, Circle, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
+ import { Locate, Loader2 } from 'lucide-react'
+-import { useClosures, isDefaultFilters } from '@/hooks/useClosures'
++import { useClosures, isDefaultFilters, DEFAULT_FILTERS } from '@/hooks/useClosures'
+ import { useGeolocation } from '@/hooks/useGeolocation'
+ import { useReportForm } from '@/contexts/ReportFormContext'
+ import { useWatchAreaPanel } from '@/contexts/WatchAreaContext'
+@@ -14,7 +14,6 @@ import { useAuth } from '@/contexts/AuthContext'
+ import { ClosureMarker } from './ClosureMarker'
+ import { FilterSidebar, FilterToggleButton } from './FilterSidebar'
+ import { ReportForm } from './ReportForm'
+-import { WatchAreaManager } from './WatchAreaManager'
+ 
+ // ---------------------------------------------------------------------------
+ // Constants
+@@ -68,6 +67,25 @@ function LocationControl() {
+   )
+ }
+ 
++// ---------------------------------------------------------------------------
++// Lets the user tap the main map to pick a position (for the report form)
++// ---------------------------------------------------------------------------
++
++function MapPositionPicker() {
++  const { onPositionPickedRef, setIsPickingLocation } = useReportForm()
++
++  useMapEvents({
++    click(e) {
++      if (onPositionPickedRef.current) {
++        onPositionPickedRef.current(e.latlng.lat, e.latlng.lng)
++        setIsPickingLocation(false)
++      }
++    },
++  })
++
++  return null
++}
++
+ // ---------------------------------------------------------------------------
+ // Re-renders Leaflet after sidebar resize transition (310ms > 300ms CSS)
+ // ---------------------------------------------------------------------------
+@@ -93,23 +111,61 @@ function ZoomToNewClosureHandler({ target }: { target: [number, number] | null }
+   return null
+ }
+ 
++// ---------------------------------------------------------------------------
++// Pauses marker pulse animations during map movement.
++// Each animated .ta-marker-ring element forces the browser to maintain a
++// separate GPU compositor layer. At high zoom with several markers on screen
++// this causes GPU memory pressure and frame-rate drops on mobile.
++// Pausing the animation removes those extra layers while the map is moving.
++// ---------------------------------------------------------------------------
++
++function MapMovementTracker() {
++  const map = useMap()
++  useEffect(() => {
++    const container = map.getContainer()
++    const start = () => container.classList.add('leaflet-map-moving')
++    const end   = () => container.classList.remove('leaflet-map-moving')
++    map.on('movestart', start)
++    map.on('zoomstart', start)
++    map.on('moveend',   end)
++    map.on('zoomend',   end)
++    return () => {
++      map.off('movestart', start)
++      map.off('zoomstart', start)
++      map.off('moveend',   end)
++      map.off('zoomend',   end)
++    }
++  }, [map])
++  return null
++}
++
+ // ---------------------------------------------------------------------------
+ // Main Map export
+ // ---------------------------------------------------------------------------
+ 
+-export default function Map() {
++export default function Map({ targetClosureId }: { targetClosureId?: string | null }) {
+   const { closures, total, loading, error, filters, setFilters } = useClosures()
+-  const { onSuccessRef }                  = useReportForm()
++  const { onSuccessRef, isPickingLocation }  = useReportForm()
+   const { user }                          = useAuth()
+   const { areas }                         = useWatchAreas()
+   const { isOpen: watchPanelOpen }        = useWatchAreaPanel()
+   const [sidebarOpen, setSidebarOpen]     = useState(false)
+   const [zoomTarget, setZoomTarget]       = useState<[number, number] | null>(null)
++  const [openPopupFor, setOpenPopupFor]   = useState<string | null>(null)
+   const isDirty = !isDefaultFilters(filters)
+ 
+   // Register zoom callback in context so ReportForm can trigger it
+   onSuccessRef.current = (lat, lng) => setZoomTarget([lat, lng])
+ 
++  // Pan to and open popup for a linked closure (e.g. from email notification)
++  useEffect(() => {
++    if (!targetClosureId || loading) return
++    const target = closures.find((c) => c.id === targetClosureId)
++    if (!target) return
++    setZoomTarget([target.latitude, target.longitude])
++    setOpenPopupFor(target.id)
++  }, [targetClosureId, closures, loading])
++
+   return (
+     <div className="flex h-full w-full overflow-hidden">
+ 
+@@ -129,13 +185,9 @@ export default function Map() {
+           center={[46.83, 12.76]}
+           zoom={11}
+           minZoom={6}
+-          className="h-full w-full"
++          maxZoom={18}
++          className="h-full w-full outline-none"
+           zoomControl={false}
+-          zoomSnap={0.5}
+-          zoomDelta={0.5}
+-          wheelDebounceTime={0}
+-          inertiaDeceleration={2500}
+-          easeLinearity={0.35}
+         >
+           <TileLayer
+             url={TILE_URL}
+@@ -148,7 +200,11 @@ export default function Map() {
+           />
+ 
+           {closures.map((closure) => (
+-            <ClosureMarker key={closure.id} closure={closure} />
++            <ClosureMarker
++              key={closure.id}
++              closure={closure}
++              autoOpen={closure.id === openPopupFor}
++            />
+           ))}
+ 
+           {/* Watch area circles — visible for logged-in users */}
+@@ -169,17 +225,37 @@ export default function Map() {
+           ))}
+ 
+           <ZoomControl position="bottomright" />
++          <MapMovementTracker />
+           <LocationControl />
+           <MapResizeHandler trigger={sidebarOpen} />
+           <ZoomToNewClosureHandler target={zoomTarget} />
++          {isPickingLocation && <MapPositionPicker />}
+         </MapContainer>
+ 
++        {/* Crosshair overlay shown while the user picks a location for a new report */}
++        {isPickingLocation && (
++          <div
++            className="pointer-events-none absolute inset-0 z-[999] flex items-center justify-center"
++            style={{ paddingBottom: 100 }}
++          >
++            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
++              <circle cx="18" cy="18" r="10" stroke="#f59e0b" strokeWidth="2.5" fill="none" opacity="0.9"/>
++              <line x1="18" y1="0" x2="18" y2="10" stroke="#f59e0b" strokeWidth="2" opacity="0.9"/>
++              <line x1="18" y1="26" x2="18" y2="36" stroke="#f59e0b" strokeWidth="2" opacity="0.9"/>
++              <line x1="0" y1="18" x2="10" y2="18" stroke="#f59e0b" strokeWidth="2" opacity="0.9"/>
++              <line x1="26" y1="18" x2="36" y2="18" stroke="#f59e0b" strokeWidth="2" opacity="0.9"/>
++              <circle cx="18" cy="18" r="2.5" fill="#f59e0b" opacity="0.9"/>
++            </svg>
++          </div>
++        )}
++
+         {/* Filter toggle button — offset below fixed header */}
+         <div className="absolute left-3 z-[1000]" style={{ top: 'calc(4rem + 0.75rem)' }}>
+           <FilterToggleButton
+             open={sidebarOpen}
+             onClick={() => setSidebarOpen((o) => !o)}
+             isDirty={isDirty}
++            count={closures.length}
+           />
+         </div>
+ 
+@@ -210,13 +286,39 @@ export default function Map() {
+ 
+         {/* Empty state */}
+         {!loading && !error && closures.length === 0 && (
+-          <div
+-            className="pointer-events-none absolute bottom-6 left-1/2 z-[999] -translate-x-1/2 rounded-lg px-4 py-2 text-sm shadow-xl"
+-            style={{ background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+-          >
+-            {isDirty
+-              ? 'Keine Sperren für diese Filter-Kombination'
+-              : 'Keine aktiven Sperren in dieser Region'}
++          <div className="absolute inset-0 z-[998] flex items-center justify-center pointer-events-none">
++            <div
++              className="pointer-events-auto flex flex-col items-center gap-3 rounded-2xl px-6 py-5 shadow-2xl text-center mx-4"
++              style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', maxWidth: 280 }}
++            >
++              {isDirty ? (
++                <>
++                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
++                    Keine Sperren gefunden
++                  </p>
++                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
++                    Für diese Filter-Kombination gibt es keine aktiven Sperren.
++                  </p>
++                  <button
++                    type="button"
++                    onClick={() => setFilters(DEFAULT_FILTERS)}
++                    className="rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors"
++                    style={{ background: 'var(--accent)', color: 'var(--bg-dark)' }}
++                  >
++                    Filter zurücksetzen
++                  </button>
++                </>
++              ) : (
++                <>
++                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
++                    Keine aktiven Sperren
++                  </p>
++                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
++                    In dieser Region gibt es aktuell keine gemeldeten Sperren.
++                  </p>
++                </>
++              )}
++            </div>
+           </div>
+         )}
+       </div>
+@@ -224,8 +326,6 @@ export default function Map() {
+       {/* Report form slide-over */}
+       <ReportForm />
+ 
+-      {/* Watch area manager slide-over */}
+-      <WatchAreaManager />
+     </div>
+   )
+ }

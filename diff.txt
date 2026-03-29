@@ -1,0 +1,37 @@
+diff --git a/src/app/globals.css b/src/app/globals.css
+index e3f81c3..4287384 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -62,8 +62,12 @@ html {
+ 
+ .ta-marker {
+   position: relative;
++  display: flex;
++  align-items: center;
++  justify-content: center;
+   width: 26px;
+   height: 26px;
++  will-change: transform;
+ }
+ 
+ .ta-marker-dot {
+@@ -90,6 +94,19 @@ html {
+   100% { transform: scale(2.2); opacity: 0; }
+ }
+ 
++/* Hide the pulse animation completely while the map is panning or zooming.
++   Instead of display: none which triggers layout reflows, we use opacity: 0 and stop the animation. */
++.leaflet-map-moving .ta-marker-ring {
++  opacity: 0 !important;
++  animation: none !important;
++  transform: scale(0) !important;
++}
++
++/* Also strip the box-shadow from the dot during movement to speed up rasterization */
++.leaflet-map-moving .ta-marker-dot {
++  box-shadow: 0 0 0 rgba(0,0,0,0) !important;
++}
++
+ /* ---------------------------------------------------------------------------
+    Leaflet — UI overrides (tile-neutral: works with Voyager or topo tiles)
+ --------------------------------------------------------------------------- */
