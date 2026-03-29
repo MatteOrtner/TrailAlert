@@ -27,14 +27,14 @@ export default async function AdminPage() {
   }
 
   return (
-    <div className="flex h-full w-full flex-col overflow-y-auto bg-bg-dark px-4 py-8 sm:px-8">
+    <div className="flex h-full w-full flex-col overflow-y-auto bg-bg-dark px-4 pb-8 pt-24 sm:px-8">
       <div className="mx-auto w-full max-w-6xl">
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold text-text-primary">Kommandozentrale</h1>
             <p className="mt-2 text-sm text-text-secondary">Verwaltung und Moderation der aktiven Wegsperren.</p>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-border bg-bg-card px-4 py-2 text-sm font-medium text-text-primary">
+          <div className="flex w-fit items-center gap-2 rounded-full border border-border bg-bg-card px-4 py-2 text-sm font-medium text-text-primary">
             Admin: {user?.email ?? 'Unbekannt'}
           </div>
         </div>
