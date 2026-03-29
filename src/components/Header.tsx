@@ -6,16 +6,16 @@ import { useReportForm } from '@/contexts/ReportFormContext'
 import { AuthButton, AuthButtonMobile } from './AuthButton'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOnboarding } from '@/hooks/useOnboarding'
+import { useAuthModal } from '@/contexts/AuthModalContext'
 import { OnboardingSheet } from './OnboardingSheet'
-import { AuthModal } from './AuthModal'
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const { open: openReport } = useReportForm()
   const { user } = useAuth()
   const { hasSeen, markSeen } = useOnboarding()
+  const { open: openAuthModal } = useAuthModal()
   const [showOnboarding, setShowOnboarding] = useState(false)
-  const [authModalOpen, setAuthModalOpen] = useState(false)
 
   function handleReport() {
     setMenuOpen(false)
@@ -29,7 +29,7 @@ export function Header() {
   function handleOnboardingSignIn() {
     markSeen()
     setShowOnboarding(false)
-    setAuthModalOpen(true)
+    openAuthModal()
   }
 
   function handleOnboardingAnonymous() {
@@ -120,7 +120,6 @@ export function Header() {
           onDismiss={handleOnboardingDismiss}
         />
       )}
-      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
     </header>
   )
 }

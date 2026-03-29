@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Mail, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useAuthModal } from '@/contexts/AuthModalContext'
 
 // ---------------------------------------------------------------------------
 // Google SVG (no extra dep)
@@ -27,16 +28,12 @@ function GoogleIcon() {
 type Tab    = 'login' | 'register'
 type Status = 'idle' | 'loading' | 'sent' | 'error'
 
-interface AuthModalProps {
-  isOpen:  boolean
-  onClose: () => void
-}
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function AuthModal({ isOpen, onClose }: AuthModalProps) {
+export function AuthModal() {
+  const { isOpen, close: onClose } = useAuthModal()
   const [tab, setTab]       = useState<Tab>('login')
   const [email, setEmail]   = useState('')
   const [status, setStatus] = useState<Status>('idle')

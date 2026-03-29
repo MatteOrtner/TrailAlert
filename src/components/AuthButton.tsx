@@ -5,7 +5,7 @@ import { LogIn, LogOut, Map, Bell, Settings, ChevronDown, Loader2 } from 'lucide
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWatchAreaPanel } from '@/contexts/WatchAreaContext'
-import { AuthModal } from './AuthModal'
+import { useAuthModal } from '@/contexts/AuthModalContext'
 
 // ---------------------------------------------------------------------------
 // Avatar — shows first letter of email or display name
@@ -55,7 +55,7 @@ const NAV_ITEMS = [
 export function AuthButton() {
   const { user, loading }         = useAuth()
   const { open: openWatchAreas }  = useWatchAreaPanel()
-  const [modalOpen, setModalOpen]   = useState(false)
+  const { open: openAuthModal }   = useAuthModal()
   const [dropdownOpen, setDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -89,18 +89,15 @@ export function AuthButton() {
   // Not logged in
   if (!user) {
     return (
-      <>
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:border-text-secondary hover:text-text-primary"
-          style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
-        >
-          <LogIn className="h-4 w-4" />
-          Anmelden
-        </button>
-        <AuthModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
-      </>
+      <button
+        type="button"
+        onClick={openAuthModal}
+        className="flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:border-text-secondary hover:text-text-primary"
+        style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+      >
+        <LogIn className="h-4 w-4" />
+        Anmelden
+      </button>
     )
   }
 
@@ -201,7 +198,7 @@ export function AuthButton() {
 
 export function AuthButtonMobile({ onClose }: { onClose: () => void }) {
   const { user, loading } = useAuth()
-  const [modalOpen, setModalOpen] = useState(false)
+  const { open: openAuthModal } = useAuthModal()
 
   async function handleSignOut() {
     onClose()
@@ -220,18 +217,15 @@ export function AuthButtonMobile({ onClose }: { onClose: () => void }) {
 
   if (!user) {
     return (
-      <>
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="flex items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium"
-          style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
-        >
-          <LogIn className="h-4 w-4" />
-          Anmelden
-        </button>
-        <AuthModal isOpen={modalOpen} onClose={() => { setModalOpen(false); onClose() }} />
-      </>
+      <button
+        type="button"
+        onClick={() => { openAuthModal(); onClose() }}
+        className="flex items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium"
+        style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+      >
+        <LogIn className="h-4 w-4" />
+        Anmelden
+      </button>
     )
   }
 
