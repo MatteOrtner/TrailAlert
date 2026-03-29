@@ -233,6 +233,40 @@ export function ReportForm() {
     setSubmitting(true)
     setSubmitError(null)
 
+    // CHECK FOR OFFLINE
+    if (!navigator.onLine) {
+      try {
+        const { fileToBase64, saveToOfflineQueue } = await import('@/lib/offlineQueue')
+        let photoDataUrl: string | null = null
+        if (photoFile) {
+          photoDataUrl = await fileToBase64(photoFile)
+        }
+
+        saveToOfflineQueue({
+          id:           crypto.randomUUID(),
+          latitude:     form.position.lat,
+          longitude:    form.position.lng,
+          title:        form.title.trim(),
+          description:  form.description.trim() || null,
+          closure_type: form.type,
+          severity:     form.severity,
+          expected_end: form.expectedEnd || null,
+          reported_by:  user?.id ?? null,
+          photoDataUrl,
+          photoType:    photoFile?.type ?? null,
+          createdAt:    Date.now()
+        })
+
+        close()
+        alert('Du bist offline! Deine Meldung wurde gespeichert und wird automatisch gepostet, sobald du wieder Internet-Empfang hast.')
+      } catch (e) {
+        setSubmitError('Fehler beim Offline-Speichern.')
+      } finally {
+        setSubmitting(false)
+      }
+      return
+    }
+
     const supabase = createClient()
     let photoUrl: string | null = null
 
@@ -275,8 +309,7 @@ export function ReportForm() {
     setSubmitting(false)
 
     if (insertError || !closure) {
-      // Surface the error clearly at the top-level instead of silently
-      // overwriting the title field and jumping to step 1.
+      // Surface the error clearly at the top-level
       setSubmitError(
         insertError?.message
           ? `Speichern fehlgeschlagen: ${insertError.message}`

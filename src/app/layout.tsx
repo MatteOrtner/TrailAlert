@@ -62,6 +62,27 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="de" className={jakartaSans.variable}>
+      <head>
+        {/* Register Serwist Service Worker for offline capability */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(
+                    function(registration) {
+                      console.log('TrailAlert: PWA Service Worker registered');
+                    },
+                    function(err) {
+                      console.error('TrailAlert: Service Worker registration failed', err);
+                    }
+                  );
+                });
+              }
+            `,
+          }}
+        />
+      </head>
       <body className="overflow-hidden flex flex-col bg-bg-dark text-text-primary antialiased">
         <AuthProvider>
           <AuthModalProvider>

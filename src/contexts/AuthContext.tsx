@@ -41,7 +41,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       initialised = true
     })
 
-    return () => subscription.unsubscribe()
+    // Offline Queue Synchronization
+    async function handleOnline() {
+      const { syncOfflineQueue } = await import('@/lib/offlineQueue')
+      await syncOfflineQueue()
+    }
+    window.addEventListener('online', handleOnline)
+    if (navigator.onLine) {
+      handleOnline()
+    }
+
+    return () => {
+      subscription.unsubscribe()
+      window.removeEventListener('online', handleOnline)
+    }
   }, [])
 
   return (
