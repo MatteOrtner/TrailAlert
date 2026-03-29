@@ -128,7 +128,7 @@ const INITIAL_FORM: FormState = {
 }
 
 export function ReportForm() {
-  const { isOpen, close, onSuccessRef } = useReportForm()
+  const { isOpen, close, onSuccessRef, notifyReported } = useReportForm()
   const { user } = useAuth()
   const geo = useGeolocation()
 
@@ -284,6 +284,7 @@ export function ReportForm() {
 
     setStep('success')
     onSuccessRef.current?.(closure.latitude, closure.longitude)
+    notifyReported()
 
     // Auto-close after 4s
     setTimeout(handleClose, 4000)

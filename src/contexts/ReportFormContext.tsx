@@ -8,12 +8,16 @@ interface ReportFormContextType {
   close:  () => void
   // Map.tsx assigns this ref so the form can zoom after submit
   onSuccessRef: React.MutableRefObject<((lat: number, lng: number) => void) | null>
+  // Increments each time a closure is successfully reported — used by toast
+  reportCount:     number
+  notifyReported:  () => void
 }
 
 const ReportFormContext = createContext<ReportFormContextType | null>(null)
 
 export function ReportFormProvider({ children }: { children: React.ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen]           = useState(false)
+  const [reportCount, setReportCount] = useState(0)
   const onSuccessRef = useRef<((lat: number, lng: number) => void) | null>(null)
 
   return (
@@ -23,6 +27,8 @@ export function ReportFormProvider({ children }: { children: React.ReactNode }) 
         open:  () => setIsOpen(true),
         close: () => setIsOpen(false),
         onSuccessRef,
+        reportCount,
+        notifyReported: () => setReportCount((n) => n + 1),
       }}
     >
       {children}
