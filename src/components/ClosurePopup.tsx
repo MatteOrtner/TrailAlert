@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { Popup } from 'react-leaflet'
 import { formatDistanceToNow, format } from 'date-fns'
 import { de } from 'date-fns/locale'
-import { ThumbsUp, ThumbsDown, Clock, CalendarX, CheckCircle, X } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, Clock, CalendarX, CheckCircle, X, Share2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Closure, ClosureType, SeverityLevel, VoteType } from '@/lib/types'
@@ -22,28 +22,29 @@ const TYPE_LABELS: Record<ClosureType, string> = {
 }
 
 const SEVERITY_LABELS: Record<SeverityLevel, { label: string; className: string }> = {
-  full_closure: { label: 'Vollsperrung', className: 'bg-danger/15 text-danger' },
-  partial:      { label: 'Teilsperrung', className: 'bg-accent/15 text-accent' },
-  warning:      { label: 'Warnung',      className: 'bg-yellow-500/15 text-yellow-400' },
+  full_closure: { label: 'Vollsperrung', className: 'bg-danger/20 text-danger' },
+  partial:      { label: 'Teilsperrung', className: 'bg-accent/20 text-accent' },
+  warning:      { label: 'Warnung',      className: 'bg-accent/10 text-accent/80' },
 }
 
 // ---------------------------------------------------------------------------
-// Fingerprint helpers
+// Helpers
 // ---------------------------------------------------------------------------
 
-const FP_KEY = 'ta_fingerprint'
-const VOTE_KEY = (id: string) => `ta_vote_${id}`
-
-function getFingerprint(): string {
-  let fp = localStorage.getItem(FP_KEY)
+// A basic fingerprint function to roughly identify anonymous users
+function getFingerprint() {
+  let fp = localStorage.getItem('ta_anon_fp')
   if (!fp) {
     fp = crypto.randomUUID()
-    localStorage.setItem(FP_KEY, fp)
+    localStorage.setItem('ta_anon_fp', fp)
   }
   return fp
 }
 
+const VOTE_KEY = (id: string) => `ta_vote_${id}`
+
 function getSavedVote(closureId: string): VoteType | null {
+  if (typeof window === 'undefined') return null
   return localStorage.getItem(VOTE_KEY(closureId)) as VoteType | null
 }
 
@@ -67,6 +68,7 @@ export function ClosurePopup({ closure }: Props) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [resolving, setResolving]       = useState(false)
   const [ownerError, setOwnerError] = useState<string | null>(null)
+  const [copied, setCopied]         = useState(false)
 
   const isOwner = !!user && user.id === closure.reported_by
 
@@ -85,6 +87,26 @@ export function ClosurePopup({ closure }: Props) {
     }
     // On success, realtime removes the marker automatically — no local state needed
   }
+
+  async function handleShare() {
+    const url = `${window.location.origin}/?closure=${closure.id}`
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'TrailAlert Sperre',
+          text: `Schau dir das mal an: ${closure.title}`,
+          url,
+        })
+      } catch (err) {
+        // Ignored
+      }
+    } else {
+      navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
   // Optimistic deltas: reset to 0 once realtime updates the prop counts
   const [delta, setDelta]           = useState<{ confirm: number; deny: number }>({ confirm: 0, deny: 0 })
 
@@ -275,6 +297,18 @@ export function ClosurePopup({ closure }: Props) {
           >
             <ThumbsDown className="h-3.5 w-3.5" />
             Nicht mehr {displayDownvotes > 0 && <span className="opacity-70">({displayDownvotes})</span>}
+          </button>
+        </div>
+
+        {/* Share Button (everyone) */}
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={handleShare}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            {copied ? 'Link kopiert!' : 'Sperre teilen'}
           </button>
         </div>
 

@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { formatDistanceToNow } from 'date-fns'
 import { de } from 'date-fns/locale'
-import { CheckCircle, Trash2, MapPin, Loader2, AlertTriangle } from 'lucide-react'
+import { CheckCircle, Trash2, MapPin, Loader2, AlertTriangle, Share2 } from 'lucide-react'
 import type { Closure, ClosureType, SeverityLevel } from '@/lib/types'
 
 // ---------------------------------------------------------------------------
@@ -38,6 +38,7 @@ function ClosureCard({
 }) {
   const [resolving, setResolving] = useState(false)
   const [error,     setError]     = useState<string | null>(null)
+  const [copied,    setCopied]    = useState(false)
 
   const severity = SEVERITY_LABELS[closure.severity]
 
@@ -50,6 +51,25 @@ function ClosureCard({
       .eq('id', closure.id)
     if (err) { setError('Fehler beim Markieren.'); setResolving(false) }
     else     { onResolved(closure.id) }
+  }
+
+  async function handleShare() {
+    const url = `${window.location.origin}/?closure=${closure.id}`
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'TrailAlert Sperre',
+          text: `Schau dir das mal an: ${closure.title}`,
+          url,
+        })
+      } catch (err) {
+        // Ignored
+      }
+    } else {
+      navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
   }
 
   return (
@@ -105,6 +125,16 @@ function ClosureCard({
             : <CheckCircle className="h-3.5 w-3.5" />
           }
           {resolving ? 'Wird markiert…' : 'Als gelöst markieren'}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleShare}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors hover:brightness-110"
+          style={{ background: 'var(--border)', color: 'var(--text-primary)' }}
+        >
+          <Share2 className="h-3.5 w-3.5" />
+          {copied ? 'Kopiert!' : 'Teilen'}
         </button>
       </div>
 
