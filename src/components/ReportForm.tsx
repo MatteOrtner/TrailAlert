@@ -9,6 +9,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { useReportForm } from '@/contexts/ReportFormContext'
 import { useGeolocation } from '@/hooks/useGeolocation'
+import { useAuth } from '@/contexts/AuthContext'
 import type { ClosureType, SeverityLevel } from '@/lib/types'
 
 // PositionPicker is Leaflet — must be ssr:false; ReportForm is already 'use client'
@@ -128,6 +129,7 @@ const INITIAL_FORM: FormState = {
 
 export function ReportForm() {
   const { isOpen, close, onSuccessRef } = useReportForm()
+  const { user } = useAuth()
   const geo = useGeolocation()
 
   const [step, setStep]           = useState<Step>(0)
@@ -266,7 +268,7 @@ export function ReportForm() {
         severity:     form.severity,
         expected_end: form.expectedEnd || null,
         photo_url:    photoUrl,
-        reported_by:  null,      // anonymous
+        reported_by:  user?.id ?? null,
         status:       'active',
       })
       .select()

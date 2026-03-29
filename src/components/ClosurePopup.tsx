@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Popup } from 'react-leaflet'
 import { formatDistanceToNow, format } from 'date-fns'
 import { de } from 'date-fns/locale'
-import { ThumbsUp, ThumbsDown, Clock, CalendarX, CheckCircle } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, Clock, CalendarX, CheckCircle, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Closure, ClosureType, SeverityLevel, VoteType } from '@/lib/types'
@@ -64,22 +64,39 @@ export function ClosurePopup({ closure }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [voteError, setVoteError]   = useState<string | null>(null)
   const [resolving, setResolving]   = useState(false)
-  const [resolveError, setResolveError] = useState<string | null>(null)
+  const [deleting, setDeleting]     = useState(false)
+  const [ownerError, setOwnerError] = useState<string | null>(null)
 
   const isOwner = !!user && user.id === closure.reported_by
 
   async function handleResolve() {
     if (resolving) return
     setResolving(true)
-    setResolveError(null)
+    setOwnerError(null)
     const supabase = createClient()
     const { error } = await supabase
       .from('closures')
       .update({ status: 'resolved' })
       .eq('id', closure.id)
     if (error) {
-      setResolveError('Konnte nicht als gelöst markiert werden.')
+      setOwnerError('Konnte nicht als gelöst markiert werden.')
       setResolving(false)
+    }
+    // On success, realtime removes the marker automatically — no local state needed
+  }
+
+  async function handleDelete() {
+    if (deleting) return
+    setDeleting(true)
+    setOwnerError(null)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('closures')
+      .delete()
+      .eq('id', closure.id)
+    if (error) {
+      setOwnerError('Löschen fehlgeschlagen.')
+      setDeleting(false)
     }
     // On success, realtime removes the marker automatically — no local state needed
   }
@@ -249,22 +266,31 @@ export function ClosurePopup({ closure }: Props) {
           <p className="text-xs text-danger">{voteError}</p>
         )}
 
-        {/* Resolve button — only visible to the reporter */}
+        {/* Owner actions — only visible to the reporter */}
         {isOwner && (
-          <div className="border-t pt-2" style={{ borderColor: '#e5e7eb' }}>
+          <div className="border-t pt-2 flex gap-2" style={{ borderColor: '#e5e7eb' }}>
             <button
               type="button"
-              disabled={resolving}
+              disabled={resolving || deleting}
               onClick={handleResolve}
-              className="flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors bg-green-500/10 text-green-600 hover:bg-green-500/20 cursor-pointer disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors bg-green-500/10 text-green-600 hover:bg-green-500/20 cursor-pointer disabled:opacity-50"
             >
               <CheckCircle className="h-3.5 w-3.5" />
-              {resolving ? 'Wird markiert…' : 'Als gelöst markieren'}
+              {resolving ? 'Wird markiert…' : 'Gelöst'}
             </button>
-            {resolveError && (
-              <p className="mt-1 text-xs text-danger">{resolveError}</p>
-            )}
+            <button
+              type="button"
+              disabled={resolving || deleting}
+              onClick={handleDelete}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors bg-danger/10 text-danger hover:bg-danger/20 cursor-pointer disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {deleting ? 'Wird gelöscht…' : 'Löschen'}
+            </button>
           </div>
+        )}
+        {ownerError && (
+          <p className="text-xs text-danger">{ownerError}</p>
         )}
       </div>
     </Popup>
