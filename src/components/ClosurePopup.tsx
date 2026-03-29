@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Popup } from 'react-leaflet'
 import { formatDistanceToNow, format } from 'date-fns'
 import { de } from 'date-fns/locale'
-import { ThumbsUp, ThumbsDown, Clock, CalendarX, CheckCircle, Trash2 } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, Clock, CalendarX, CheckCircle, Trash2, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Closure, ClosureType, SeverityLevel, VoteType } from '@/lib/types'
@@ -63,7 +64,8 @@ export function ClosurePopup({ closure }: Props) {
   const [voted, setVoted]           = useState<VoteType | null>(() => getSavedVote(closure.id))
   const [submitting, setSubmitting] = useState(false)
   const [voteError, setVoteError]   = useState<string | null>(null)
-  const [resolving, setResolving]   = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [resolving, setResolving]       = useState(false)
   const [deleting, setDeleting]     = useState(false)
   const [ownerError, setOwnerError] = useState<string | null>(null)
 
@@ -198,12 +200,43 @@ export function ClosurePopup({ closure }: Props) {
 
         {/* Photo */}
         {closure.photo_url && (
-          <img
-            src={closure.photo_url}
-            alt="Foto der Sperre"
-            className="w-full rounded-md object-cover"
-            style={{ maxHeight: 120 }}
-          />
+          <>
+            <button
+              type="button"
+              onClick={() => setLightboxOpen(true)}
+              className="w-full overflow-hidden rounded-md"
+              style={{ maxHeight: 120 }}
+            >
+              <img
+                src={closure.photo_url}
+                alt="Foto der Sperre"
+                className="w-full object-cover transition-opacity hover:opacity-90"
+                style={{ maxHeight: 120 }}
+              />
+            </button>
+            {lightboxOpen && createPortal(
+              <div
+                className="fixed inset-0 z-[2100] flex items-center justify-center bg-black/90 p-4"
+                onClick={() => setLightboxOpen(false)}
+              >
+                <button
+                  type="button"
+                  onClick={() => setLightboxOpen(false)}
+                  className="absolute right-4 top-4 rounded-full p-2"
+                  style={{ background: 'rgba(0,0,0,0.6)', color: '#fff' }}
+                >
+                  <X className="h-5 w-5" />
+                </button>
+                <img
+                  src={closure.photo_url!}
+                  alt="Foto der Sperre"
+                  className="max-h-full max-w-full rounded-lg object-contain"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>,
+              document.body,
+            )}
+          </>
         )}
 
         {/* Meta */}
