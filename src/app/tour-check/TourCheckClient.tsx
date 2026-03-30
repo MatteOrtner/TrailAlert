@@ -200,7 +200,7 @@ export function TourCheckClient() {
                 So exportierst du deine Route:
               </p>
               <ol className="mt-2 ml-4 text-xs space-y-1" style={{ color: 'var(--text-secondary)', listStyleType: 'decimal' }}>
-                <li><strong style={{ color: 'var(--text-primary)' }}>Komoot:</strong> Tour öffnen → <span style={{ color: 'var(--text-primary)' }}>···</span> (Menü) → GPX exportieren</li>
+                <li><strong style={{ color: 'var(--text-primary)' }}>Komoot:</strong> Tour öffnen → <span style={{ color: 'var(--text-primary)' }}>···</span> (Menü) → GPX-Datei herunterladen</li>
                 <li><strong style={{ color: 'var(--text-primary)' }}>Strava:</strong> Route öffnen → <span style={{ color: 'var(--text-primary)' }}>···</span> → Als GPX exportieren</li>
                 <li><strong style={{ color: 'var(--text-primary)' }}>AllTrails:</strong> Route öffnen → Download → GPX format</li>
               </ol>
