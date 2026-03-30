@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useRef, useState } from 'react'
+import type { Closure } from '@/lib/types'
 
 interface ReportFormContextType {
   isOpen: boolean
@@ -16,6 +17,9 @@ interface ReportFormContextType {
   setIsPickingLocation: (v: boolean) => void
   // Map.tsx calls this when the user taps the map during picking
   onPositionPickedRef: React.MutableRefObject<((lat: number, lng: number) => void) | null>
+  // Active closures from the map — used for duplicate detection
+  allClosures:    Closure[]
+  setAllClosures: (closures: Closure[]) => void
 }
 
 const ReportFormContext = createContext<ReportFormContextType | null>(null)
@@ -24,6 +28,7 @@ export function ReportFormProvider({ children }: { children: React.ReactNode }) 
   const [isOpen, setIsOpen]                   = useState(false)
   const [reportCount, setReportCount]         = useState(0)
   const [isPickingLocation, setIsPickingLocation] = useState(false)
+  const [allClosures, setAllClosures]         = useState<Closure[]>([])
   const onSuccessRef      = useRef<((lat: number, lng: number) => void) | null>(null)
   const onPositionPickedRef = useRef<((lat: number, lng: number) => void) | null>(null)
 
@@ -39,6 +44,8 @@ export function ReportFormProvider({ children }: { children: React.ReactNode }) 
         isPickingLocation,
         setIsPickingLocation,
         onPositionPickedRef,
+        allClosures,
+        setAllClosures,
       }}
     >
       {children}
