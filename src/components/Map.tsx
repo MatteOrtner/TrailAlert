@@ -188,6 +188,7 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
           maxZoom={18}
           className="h-full w-full outline-none"
           zoomControl={false}
+          attributionControl={false}
           preferCanvas={true}
         >
           <TileLayer
