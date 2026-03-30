@@ -112,7 +112,6 @@ export function TourCheckClient() {
       setRoutePoints(points)
       setFileName(file.name)
       setHits(newHits)
-      setSelectedClosureId(null)
     }
     reader.readAsText(file)
   }
