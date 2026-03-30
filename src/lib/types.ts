@@ -1,5 +1,5 @@
 export type ClosureType = 'forestwork' | 'construction' | 'damage' | 'other'
-export type ClosureStatus = 'active' | 'resolved' | 'unconfirmed'
+export type ClosureStatus = 'active' | 'resolved' | 'unconfirmed' | 'pending_review'
 export type SeverityLevel = 'full_closure' | 'partial' | 'warning'
 export type VoteType = 'confirm' | 'deny'
 
