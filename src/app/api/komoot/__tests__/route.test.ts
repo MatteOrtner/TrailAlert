@@ -46,4 +46,12 @@ describe('GET /api/komoot', () => {
     const text = await res.text()
     expect(text).toBe(fakeGpx)
   })
+
+  it('returns 502 when fetch throws a network error', async () => {
+    jest.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network error'))
+    const res = await GET(makeRequest({ tourId: '123456789' }))
+    expect(res.status).toBe(502)
+    const json = await res.json()
+    expect(json.error).toBe('Netzwerkfehler. Bitte versuche es erneut.')
+  })
 })
