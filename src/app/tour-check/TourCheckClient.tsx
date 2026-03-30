@@ -1,0 +1,299 @@
+'use client'
+
+import dynamic from 'next/dynamic'
+import { useRef, useState } from 'react'
+import { Upload, X, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react'
+import { useClosures } from '@/hooks/useClosures'
+import { pointToSegmentMeters } from '@/lib/geo'
+import type { LatLng } from '@/lib/geo'
+import type { Closure } from '@/lib/types'
+
+// Leaflet cannot run on the server — load TourMap only in the browser
+const TourMap = dynamic(
+  () => import('@/components/TourMap').then((m) => ({ default: m.TourMap })),
+  {
+    ssr:     false,
+    loading: () => (
+      <div className="flex h-full w-full items-center justify-center" style={{ background: 'var(--bg-dark)' }}>
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: 'var(--accent)' }} />
+      </div>
+    ),
+  },
+)
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+const MAX_FILE_BYTES     = 5 * 1024 * 1024
+const COLLISION_RADIUS_M = 75
+
+const SEVERITY_COLORS = {
+  full_closure: '#ef4444',
+  partial:      '#f59e0b',
+  warning:      '#eab308',
+} as const
+
+// ---------------------------------------------------------------------------
+// GPX parser — extracts track points from raw XML text
+// ---------------------------------------------------------------------------
+function parseGpx(xml: string): LatLng[] {
+  const doc    = new DOMParser().parseFromString(xml, 'application/xml')
+  const trkpts = Array.from(doc.getElementsByTagName('trkpt'))
+  return trkpts
+    .map((pt) => ({
+      lat: parseFloat(pt.getAttribute('lat') ?? 'NaN'),
+      lng: parseFloat(pt.getAttribute('lon') ?? 'NaN'),
+    }))
+    .filter((p) => isFinite(p.lat) && isFinite(p.lng))
+}
+
+// ---------------------------------------------------------------------------
+// Minimum distance from a closure point to the full route
+// ---------------------------------------------------------------------------
+function minDistanceToRoute(closure: Closure, route: LatLng[]): number {
+  let min = Infinity
+  for (let i = 0; i < route.length - 1; i++) {
+    const d = pointToSegmentMeters(
+      { lat: closure.latitude, lng: closure.longitude },
+      route[i],
+      route[i + 1],
+    )
+    if (d < min) min = d
+  }
+  return min
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+export function TourCheckClient() {
+  const { closures, loading: closuresLoading } = useClosures()
+
+  const [routePoints,       setRoutePoints]       = useState<LatLng[]>([])
+  const [fileName,          setFileName]          = useState<string | null>(null)
+  const [hits,              setHits]              = useState<{ closure: Closure; distanceM: number }[]>([])
+  const [fileError,         setFileError]         = useState<string | null>(null)
+  const [selectedClosureId, setSelectedClosureId] = useState<string | null>(null)
+  const [dragOver,          setDragOver]          = useState(false)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  function processFile(file: File) {
+    setFileError(null)
+
+    if (!file.name.toLowerCase().endsWith('.gpx')) {
+      setFileError('Bitte eine .gpx-Datei hochladen.')
+      return
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      setFileError('Datei zu groß (max. 5 MB).')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text   = e.target?.result as string
+      const points = parseGpx(text)
+
+      if (points.length < 2) {
+        setFileError('Keine Route in dieser Datei gefunden.')
+        return
+      }
+
+      // Only check non-resolved closures
+      const candidates = closures.filter(
+        (c) => c.status === 'active' || c.status === 'unconfirmed' || c.status === 'pending_review',
+      )
+
+      const newHits = candidates
+        .map((c) => ({ closure: c, distanceM: minDistanceToRoute(c, points) }))
+        .filter(({ distanceM }) => distanceM <= COLLISION_RADIUS_M)
+        .sort((a, b) => a.distanceM - b.distanceM)
+
+      setRoutePoints(points)
+      setFileName(file.name)
+      setHits(newHits)
+      setSelectedClosureId(null)
+    }
+    reader.readAsText(file)
+  }
+
+  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) processFile(file)
+    e.target.value = '' // reset so the same file can be re-uploaded
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file) processFile(file)
+  }
+
+  function handleClear() {
+    setRoutePoints([])
+    setFileName(null)
+    setHits([])
+    setFileError(null)
+    setSelectedClosureId(null)
+  }
+
+  // Closures displayed on the map: all non-resolved ones
+  const mapClosures = closures.filter(
+    (c) => c.status === 'active' || c.status === 'unconfirmed' || c.status === 'pending_review',
+  )
+
+  return (
+    <div className="flex flex-col" style={{ minHeight: '100svh', background: 'var(--bg-dark)' }}>
+
+      {/* ── Top panel ─────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-4 px-4 pb-4 pt-20">
+
+        {/* Header text */}
+        <div>
+          <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
+            Tour prüfen
+          </h1>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Lade deine GPX-Route hoch und sieh sofort, ob aktive Sperren auf deinem Weg liegen.
+          </p>
+        </div>
+
+        {/* Upload area or file info */}
+        {!fileName ? (
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl py-8 transition-colors"
+            style={{
+              border:     `2px dashed ${dragOver ? 'var(--accent)' : 'var(--border)'}`,
+              background: dragOver ? 'rgba(245,158,11,0.05)' : 'var(--bg-card)',
+            }}
+          >
+            <Upload className="h-8 w-8" style={{ color: 'var(--accent)' }} />
+            <div className="text-center">
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                GPX-Datei hochladen
+              </p>
+              <p className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Drag &amp; Drop oder klicken · max. 5 MB
+              </p>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".gpx"
+              className="sr-only"
+              onChange={handleFileInput}
+            />
+          </div>
+        ) : (
+          <div
+            className="flex items-center justify-between rounded-xl px-4 py-3"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
+          >
+            <span className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              {fileName}
+            </span>
+            <button
+              type="button"
+              onClick={handleClear}
+              className="ml-3 shrink-0 rounded-md p-1 transition-colors"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {/* File error */}
+        {fileError && (
+          <p className="text-sm" style={{ color: 'var(--danger)' }}>{fileError}</p>
+        )}
+
+        {/* Status banner — shown after a successful parse */}
+        {fileName && !fileError && (
+          <div
+            className="flex items-center gap-3 rounded-xl px-4 py-3"
+            style={{
+              background: hits.length === 0
+                ? 'rgba(34,197,94,0.1)'
+                : 'rgba(245,158,11,0.1)',
+              border: `1px solid ${hits.length === 0
+                ? 'rgba(34,197,94,0.3)'
+                : 'rgba(245,158,11,0.3)'}`,
+            }}
+          >
+            {hits.length === 0 ? (
+              <>
+                <CheckCircle2 className="h-5 w-5 shrink-0" style={{ color: '#22c55e' }} />
+                <span className="text-sm font-semibold" style={{ color: '#22c55e' }}>
+                  Alles klar — keine Sperren auf deiner Route
+                </span>
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="h-5 w-5 shrink-0" style={{ color: '#f59e0b' }} />
+                <span className="text-sm font-semibold" style={{ color: '#f59e0b' }}>
+                  {hits.length} {hits.length === 1 ? 'Sperre' : 'Sperren'} auf deiner Route
+                </span>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Warning list */}
+        {hits.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {hits.map(({ closure, distanceM }) => (
+              <button
+                key={closure.id}
+                type="button"
+                onClick={() => setSelectedClosureId(closure.id)}
+                className="flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors"
+                style={{
+                  background: selectedClosureId === closure.id
+                    ? 'rgba(245,158,11,0.1)'
+                    : 'var(--bg-card)',
+                  border: `1px solid ${selectedClosureId === closure.id
+                    ? 'rgba(245,158,11,0.4)'
+                    : 'var(--border)'}`,
+                }}
+              >
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ background: SEVERITY_COLORS[closure.severity] }}
+                />
+                <span className="flex-1 truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  {closure.title}
+                </span>
+                <span className="shrink-0 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  {Math.round(distanceM)} m
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Map ───────────────────────────────────────────────────────── */}
+      <div className="flex-1" style={{ minHeight: 400 }}>
+        {closuresLoading ? (
+          <div className="flex h-full items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'var(--accent)' }} />
+          </div>
+        ) : (
+          <TourMap
+            routePoints={routePoints}
+            closures={mapClosures}
+            selectedClosureId={selectedClosureId}
+          />
+        )}
+      </div>
+
+    </div>
+  )
+}
