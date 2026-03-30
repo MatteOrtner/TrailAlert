@@ -77,6 +77,7 @@ export function TourCheckClient() {
   const [dragOver,          setDragOver]          = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const mapRef       = useRef<HTMLDivElement>(null)
 
   function processFile(file: File) {
     setFileError(null)
@@ -252,7 +253,10 @@ export function TourCheckClient() {
               <button
                 key={closure.id}
                 type="button"
-                onClick={() => setSelectedClosureId(closure.id)}
+                onClick={() => {
+                  setSelectedClosureId(closure.id)
+                  mapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }}
                 className="flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors"
                 style={{
                   background: selectedClosureId === closure.id
@@ -280,7 +284,7 @@ export function TourCheckClient() {
       </div>
 
       {/* ── Map ───────────────────────────────────────────────────────── */}
-      <div className="flex-1" style={{ minHeight: 400 }}>
+      <div ref={mapRef} className="flex-1" style={{ minHeight: 400 }}>
         {closuresLoading ? (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'var(--accent)' }} />
