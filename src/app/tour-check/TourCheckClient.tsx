@@ -1,8 +1,8 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useRef, useState } from 'react'
-import { Upload, X, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Upload, X, AlertTriangle, CheckCircle2, Loader2, ArrowLeft } from 'lucide-react'
 import { useClosures } from '@/hooks/useClosures'
 import { pointToSegmentMeters } from '@/lib/geo'
 import type { LatLng } from '@/lib/geo'
@@ -79,6 +79,13 @@ export function TourCheckClient() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mapRef       = useRef<HTMLDivElement>(null)
 
+  // Scroll to the map section when a closure is selected from the list
+  useEffect(() => {
+    if (!selectedClosureId || !mapRef.current) return
+    const top = mapRef.current.getBoundingClientRect().top + window.scrollY - 64
+    window.scrollTo({ top, behavior: 'smooth' })
+  }, [selectedClosureId])
+
   function processFile(file: File) {
     setFileError(null)
 
@@ -153,6 +160,14 @@ export function TourCheckClient() {
 
         {/* Header text */}
         <div>
+          <a
+            href="/"
+            className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Zurück zur Karte
+          </a>
           <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
             Tour prüfen
           </h1>
@@ -253,10 +268,7 @@ export function TourCheckClient() {
               <button
                 key={closure.id}
                 type="button"
-                onClick={() => {
-                  setSelectedClosureId(closure.id)
-                  mapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                }}
+                onClick={() => setSelectedClosureId(closure.id)}
                 className="flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors"
                 style={{
                   background: selectedClosureId === closure.id
