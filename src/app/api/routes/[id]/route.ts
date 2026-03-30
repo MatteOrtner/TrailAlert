@@ -24,7 +24,7 @@ export async function GET(
     .select('route_points, file_name')
     .eq('id', id)
     .gt('created_at', thirtyDaysAgo)
-    .single()
+    .maybeSingle()
 
   if (error) {
     return NextResponse.json(

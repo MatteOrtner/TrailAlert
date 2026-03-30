@@ -29,7 +29,7 @@ describe('GET /api/routes/[id]', () => {
     const mockSelect = jest.fn().mockResolvedValue({ data: null, error: null })
     ;(createClient as jest.Mock).mockResolvedValue({
       from: () => ({
-        select: () => ({ eq: () => ({ gt: () => ({ single: mockSelect }) }) }),
+        select: () => ({ eq: () => ({ gt: () => ({ maybeSingle: mockSelect }) }) }),
       }),
     })
 
@@ -47,7 +47,7 @@ describe('GET /api/routes/[id]', () => {
     const mockSelect = jest.fn().mockResolvedValue({ data: fakeRoute, error: null })
     ;(createClient as jest.Mock).mockResolvedValue({
       from: () => ({
-        select: () => ({ eq: () => ({ gt: () => ({ single: mockSelect }) }) }),
+        select: () => ({ eq: () => ({ gt: () => ({ maybeSingle: mockSelect }) }) }),
       }),
     })
 
@@ -62,7 +62,7 @@ describe('GET /api/routes/[id]', () => {
     const mockSelect = jest.fn().mockResolvedValue({ data: null, error: { message: 'db error' } })
     ;(createClient as jest.Mock).mockResolvedValue({
       from: () => ({
-        select: () => ({ eq: () => ({ gt: () => ({ single: mockSelect }) }) }),
+        select: () => ({ eq: () => ({ gt: () => ({ maybeSingle: mockSelect }) }) }),
       }),
     })
 
