@@ -134,7 +134,6 @@ export function TourCheckClient() {
     setFileName(null)
     setHits([])
     setFileError(null)
-    setSelectedClosureId(null)
   }
 
   // Closures displayed on the map: all non-resolved ones
