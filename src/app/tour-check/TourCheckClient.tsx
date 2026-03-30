@@ -194,6 +194,9 @@ export function TourCheckClient() {
               onChange={handleFileInput}
             />
           </div>
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Komoot-Route exportieren: Tour öffnen → <span style={{ color: 'var(--text-primary)' }}>···</span> → GPX exportieren
+          </p>
         ) : (
           <div
             className="flex items-center justify-between rounded-xl px-4 py-3"
