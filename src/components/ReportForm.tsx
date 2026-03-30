@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useReportForm } from '@/contexts/ReportFormContext'
 import { useGeolocation } from '@/hooks/useGeolocation'
 import { useAuth } from '@/contexts/AuthContext'
-import type { ClosureType, SeverityLevel } from '@/lib/types'
+import type { Closure, ClosureType, SeverityLevel } from '@/lib/types'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -91,6 +91,21 @@ function StepBar({ current }: { current: number }) {
 }
 
 // ---------------------------------------------------------------------------
+// Haversine distance in metres between two lat/lng points
+// ---------------------------------------------------------------------------
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R    = 6_371_000
+  const dLat = (lat2 - lat1) * (Math.PI / 180)
+  const dLng = (lng2 - lng1) * (Math.PI / 180)
+  const a    =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * (Math.PI / 180)) *
+    Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+// ---------------------------------------------------------------------------
 // ReportForm
 // ---------------------------------------------------------------------------
 
@@ -119,6 +134,7 @@ export function ReportForm() {
     isOpen, close,
     isPickingLocation, setIsPickingLocation,
     onPositionPickedRef,
+    allClosures,
   } = useReportForm()
   const { user } = useAuth()
   const geo = useGeolocation()
@@ -132,6 +148,7 @@ export function ReportForm() {
   const [submitting,    setSubmitting]    = useState(false)
   const [submitError,   setSubmitError]   = useState<string | null>(null)
   const [dragOver, setDragOver]         = useState(false)
+  const [nearbyClosures, setNearbyClosures] = useState<{ closure: Closure; distanceM: number }[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const touchStartY  = useRef(0)
   const router       = useRouter()
@@ -187,6 +204,24 @@ export function ReportForm() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geo.position])
+
+  // Compute nearby open closures when the user picks a location
+  useEffect(() => {
+    if (!form.position || step !== 1) {
+      setNearbyClosures([])
+      return
+    }
+    const RADIUS_M = 100
+    const nearby = allClosures
+      .filter(c => c.status === 'active' || c.status === 'unconfirmed')
+      .map(c => ({
+        closure:   c,
+        distanceM: haversineMeters(form.position!.lat, form.position!.lng, c.latitude, c.longitude),
+      }))
+      .filter(({ distanceM }) => distanceM <= RADIUS_M)
+      .sort((a, b) => a.distanceM - b.distanceM)
+    setNearbyClosures(nearby)
+  }, [form.position, step, allClosures])
 
   // --- Photo file validation ---
   function applyPhoto(file: File) {
@@ -446,6 +481,39 @@ export function ReportForm() {
           {/* ---- STEP 1: Details ---- */}
           {step === 1 && (
             <>
+              {nearbyClosures.length > 0 && (
+                <div
+                  className="rounded-lg p-3"
+                  style={{ border: '1px solid rgba(245,158,11,0.4)', background: 'rgba(245,158,11,0.08)' }}
+                >
+                  <p className="text-sm font-semibold" style={{ color: '#f59e0b' }}>
+                    Mögliche Duplikate in der Nähe
+                  </p>
+                  <div className="mt-2 flex flex-col gap-2">
+                    {nearbyClosures.map(({ closure, distanceM }) => (
+                      <button
+                        key={closure.id}
+                        type="button"
+                        onClick={() => {
+                          close()
+                          router.push(`/?closure=${closure.id}`)
+                        }}
+                        className="flex items-center justify-between gap-2 text-left text-sm"
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
+                        <span className="truncate">{closure.title}</span>
+                        <span className="shrink-0 text-xs font-medium" style={{ color: '#f59e0b' }}>
+                          {Math.round(distanceM)} m
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    Du kannst trotzdem eine neue Meldung erstellen.
+                  </p>
+                </div>
+              )}
+
               <Field label="Titel" required error={errors.title}>
                 <input
                   type="text"
