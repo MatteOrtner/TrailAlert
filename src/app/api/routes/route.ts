@@ -23,6 +23,20 @@ export async function POST(request: Request) {
     )
   }
 
+  for (const pt of routePoints as unknown[]) {
+    if (
+      typeof (pt as { lat?: unknown }).lat !== 'number' ||
+      !isFinite((pt as { lat: number }).lat) ||
+      typeof (pt as { lng?: unknown }).lng !== 'number' ||
+      !isFinite((pt as { lng: number }).lng)
+    ) {
+      return NextResponse.json(
+        { error: 'Alle Punkte müssen gültige lat/lng-Koordinaten haben.' },
+        { status: 400 },
+      )
+    }
+  }
+
   if (typeof fileName !== 'string' || fileName.trim().length === 0) {
     return NextResponse.json(
       { error: 'fileName darf nicht leer sein.' },

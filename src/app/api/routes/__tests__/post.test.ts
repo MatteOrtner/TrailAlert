@@ -49,6 +49,14 @@ describe('POST /api/routes', () => {
     expect(res.status).toBe(400)
   })
 
+  it('returns 400 when a point has non-finite coordinates', async () => {
+    const res = await POST(makeRequest({
+      routePoints: [{ lat: Infinity, lng: 12.5 }, { lat: 46.1, lng: 12.6 }],
+      fileName: 'test.gpx',
+    }))
+    expect(res.status).toBe(400)
+  })
+
   it('returns 201 with id on success', async () => {
     const mockInsert = jest.fn().mockResolvedValue({ error: null })
     ;(createClient as jest.Mock).mockResolvedValue({
