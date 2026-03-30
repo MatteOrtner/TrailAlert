@@ -45,16 +45,34 @@ describe('GET /api/komoot', () => {
     expect(json.error).toBe('Netzwerkfehler. Bitte versuche es erneut.')
   })
 
-  it('returns GPX text with correct content-type on success', async () => {
+  it('returns GPX text with correct content-type on success for tour', async () => {
     const fakeGpx = '<gpx><trk><trkseg><trkpt lat="46.0" lon="12.5"/></trkseg></trk></gpx>'
     jest.spyOn(global, 'fetch').mockResolvedValueOnce(
       new Response(fakeGpx, { status: 200 })
     )
-    const res = await GET(makeRequest({ tourId: '123456789' }))
+    const res = await GET(makeRequest({ tourId: '123456789', tourType: 'tour' }))
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toBe('text/xml')
     const text = await res.text()
     expect(text).toBe(fakeGpx)
+  })
+
+  it('returns GPX text for smarttour type', async () => {
+    const fakeGpx = '<gpx><trk><trkseg><trkpt lat="46.0" lon="12.5"/></trkseg></trk></gpx>'
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(fakeGpx, { status: 200 })
+    )
+    const res = await GET(makeRequest({ tourId: '1942539', tourType: 'smarttour' }))
+    expect(res.status).toBe(200)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'https://www.komoot.com/api/v007/smarttours/1942539.gpx',
+      expect.any(Object),
+    )
+  })
+
+  it('returns 400 for invalid tourType', async () => {
+    const res = await GET(makeRequest({ tourId: '123456789', tourType: 'unknown' }))
+    expect(res.status).toBe(400)
   })
 
   it('returns 502 when fetch throws a network error', async () => {

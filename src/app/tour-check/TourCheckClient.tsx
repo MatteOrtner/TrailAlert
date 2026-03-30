@@ -5,7 +5,7 @@ import { useRef, useState } from 'react'
 import { Upload, X, AlertTriangle, CheckCircle2, Loader2, ArrowLeft, Link } from 'lucide-react'
 import { useClosures } from '@/hooks/useClosures'
 import { pointToSegmentMeters } from '@/lib/geo'
-import { extractTourId } from '@/lib/komoot'
+import { extractTourRef } from '@/lib/komoot'
 import type { LatLng } from '@/lib/geo'
 import type { Closure } from '@/lib/types'
 
@@ -147,15 +147,15 @@ export function TourCheckClient() {
   async function handleKomootLoad() {
     setFileError(null)
 
-    const tourId = extractTourId(komootUrl)
-    if (!tourId) {
+    const tourRef = extractTourRef(komootUrl)
+    if (!tourRef) {
       setFileError('Ungültige Komoot-URL.')
       return
     }
 
     setKomootLoading(true)
     try {
-      const res = await fetch(`/api/komoot?tourId=${tourId}`)
+      const res = await fetch(`/api/komoot?tourId=${tourRef.id}&tourType=${tourRef.type}`)
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
         setFileError(json.error ?? 'Tour nicht gefunden oder privat.')
@@ -163,7 +163,7 @@ export function TourCheckClient() {
       }
       const text   = await res.text()
       const points = parseGpx(text)
-      applyPoints(points, `Komoot-Tour ${tourId}`)
+      applyPoints(points, `Komoot-Tour ${tourRef.id}`)
     } catch {
       setFileError('Netzwerkfehler. Bitte versuche es erneut.')
     } finally {
