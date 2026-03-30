@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Upload, X, AlertTriangle, CheckCircle2, Loader2, ArrowLeft } from 'lucide-react'
 import { useClosures } from '@/hooks/useClosures'
 import { pointToSegmentMeters } from '@/lib/geo'
@@ -73,18 +73,9 @@ export function TourCheckClient() {
   const [fileName,          setFileName]          = useState<string | null>(null)
   const [hits,              setHits]              = useState<{ closure: Closure; distanceM: number }[]>([])
   const [fileError,         setFileError]         = useState<string | null>(null)
-  const [selectedClosureId, setSelectedClosureId] = useState<string | null>(null)
-  const [dragOver,          setDragOver]          = useState(false)
+  const [dragOver, setDragOver] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const mapRef       = useRef<HTMLDivElement>(null)
-
-  // Scroll to the map section when a closure is selected from the list
-  useEffect(() => {
-    if (!selectedClosureId || !mapRef.current) return
-    const top = mapRef.current.getBoundingClientRect().top + window.scrollY - 64
-    window.scrollTo({ top, behavior: 'smooth' })
-  }, [selectedClosureId])
 
   function processFile(file: File) {
     setFileError(null)
@@ -265,19 +256,11 @@ export function TourCheckClient() {
         {hits.length > 0 && (
           <div className="flex flex-col gap-2">
             {hits.map(({ closure, distanceM }) => (
-              <button
+              <a
                 key={closure.id}
-                type="button"
-                onClick={() => setSelectedClosureId(closure.id)}
-                className="flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors"
-                style={{
-                  background: selectedClosureId === closure.id
-                    ? 'rgba(245,158,11,0.1)'
-                    : 'var(--bg-card)',
-                  border: `1px solid ${selectedClosureId === closure.id
-                    ? 'rgba(245,158,11,0.4)'
-                    : 'var(--border)'}`,
-                }}
+                href={`/?closure=${closure.id}`}
+                className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
               >
                 <span
                   className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -289,14 +272,14 @@ export function TourCheckClient() {
                 <span className="shrink-0 text-xs" style={{ color: 'var(--text-secondary)' }}>
                   {Math.round(distanceM)} m
                 </span>
-              </button>
+              </a>
             ))}
           </div>
         )}
       </div>
 
       {/* ── Map ───────────────────────────────────────────────────────── */}
-      <div ref={mapRef} className="flex-1" style={{ minHeight: 400 }}>
+      <div className="flex-1" style={{ minHeight: 400 }}>
         {closuresLoading ? (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'var(--accent)' }} />
@@ -305,7 +288,7 @@ export function TourCheckClient() {
           <TourMap
             routePoints={routePoints}
             closures={mapClosures}
-            selectedClosureId={selectedClosureId}
+            selectedClosureId={null}
           />
         )}
       </div>
