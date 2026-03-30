@@ -68,6 +68,15 @@ export function Header() {
 
         {/* Desktop actions */}
         <div className="hidden sm:flex items-center gap-3">
+          <a
+            href="/tour-check"
+            className="rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+            style={{ color: 'var(--text-secondary)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
+          >
+            Tour prüfen
+          </a>
           <button
             type="button"
             onClick={handleReport}
@@ -108,6 +117,15 @@ export function Header() {
             <Plus className="h-4 w-4" strokeWidth={2.5} />
             Sperre melden
           </button>
+
+          <a
+            href="/tour-check"
+            onClick={() => setMenuOpen(false)}
+            className="flex items-center justify-center rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors"
+            style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+          >
+            Tour prüfen
+          </a>
 
           <AuthButtonMobile onClose={() => setMenuOpen(false)} />
         </div>
