@@ -145,8 +145,12 @@ function MapMovementTracker() {
 
 export default function Map({ targetClosureId }: { targetClosureId?: string | null }) {
   const { closures, total, loading, error, filters, setFilters } = useClosures()
-  const { onSuccessRef, isPickingLocation }  = useReportForm()
+  const { onSuccessRef, isPickingLocation, setAllClosures } = useReportForm()
   const { user }                          = useAuth()
+
+  useEffect(() => {
+    setAllClosures(closures)
+  }, [closures]) // eslint-disable-line react-hooks/exhaustive-deps
   const { areas }                         = useWatchAreas()
   const { isOpen: watchPanelOpen }        = useWatchAreaPanel()
   const [sidebarOpen, setSidebarOpen]     = useState(false)
