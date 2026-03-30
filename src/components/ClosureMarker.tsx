@@ -2,7 +2,7 @@
 
 import { memo, useMemo, useRef, useEffect } from 'react'
 import L from 'leaflet'
-import { Marker } from 'react-leaflet'
+import { Marker, useMap } from 'react-leaflet'
 import type { Marker as LeafletMarker } from 'leaflet'
 import type { Closure, SeverityLevel } from '@/lib/types'
 import { ClosurePopup } from './ClosurePopup'
@@ -45,6 +45,7 @@ interface Props {
 // This is critical for performance — only the newly added marker re-renders
 // when a Realtime INSERT fires, not every existing marker.
 export const ClosureMarker = memo(function ClosureMarker({ closure, autoOpen }: Props) {
+  const map       = useMap()
   const color     = SEVERITY_COLORS[closure.severity]
   const pulse     = isNew(closure.created_at)
   const icon      = useMemo(() => createIcon(color, pulse), [color, pulse])
@@ -63,6 +64,20 @@ export const ClosureMarker = memo(function ClosureMarker({ closure, autoOpen }: 
       position={[closure.latitude, closure.longitude]}
       icon={icon}
       ref={markerRef}
+      eventHandlers={{
+        click: (e) => {
+          // Calculate pixel projection of the marker
+          const targetPoint = map.project(e.latlng, map.getZoom())
+          // Offset the point by 150px upwards to make room for the popup in the center of the screen
+          targetPoint.y -= 150
+          const targetLatLng = map.unproject(targetPoint, map.getZoom())
+          
+          map.flyTo(targetLatLng, map.getZoom(), {
+            animate: true,
+            duration: 0.5,
+          })
+        }
+      }}
     >
       <ClosurePopup closure={closure} />
     </Marker>
