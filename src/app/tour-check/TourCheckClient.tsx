@@ -2,10 +2,9 @@
 
 import dynamic from 'next/dynamic'
 import { useRef, useState } from 'react'
-import { Upload, X, AlertTriangle, CheckCircle2, Loader2, ArrowLeft, Link } from 'lucide-react'
+import { Upload, X, AlertTriangle, CheckCircle2, Loader2, ArrowLeft } from 'lucide-react'
 import { useClosures } from '@/hooks/useClosures'
 import { pointToSegmentMeters } from '@/lib/geo'
-import { extractTourRef } from '@/lib/komoot'
 import type { LatLng } from '@/lib/geo'
 import type { Closure } from '@/lib/types'
 
@@ -72,20 +71,14 @@ function minDistanceToRoute(closure: Closure, route: LatLng[]): number {
 export function TourCheckClient() {
   const { closures, loading: closuresLoading } = useClosures()
 
-  const [activeTab,      setActiveTab]      = useState<'gpx' | 'komoot'>('gpx')
-  const [routePoints,    setRoutePoints]    = useState<LatLng[]>([])
-  const [fileName,       setFileName]       = useState<string | null>(null)
-  const [hits,           setHits]           = useState<{ closure: Closure; distanceM: number }[]>([])
-  const [fileError,      setFileError]      = useState<string | null>(null)
-  const [dragOver,       setDragOver]       = useState(false)
-  const [komootUrl,      setKomootUrl]      = useState('')
-  const [komootLoading,  setKomootLoading]  = useState(false)
+  const [routePoints, setRoutePoints] = useState<LatLng[]>([])
+  const [fileName,    setFileName]    = useState<string | null>(null)
+  const [hits,        setHits]        = useState<{ closure: Closure; distanceM: number }[]>([])
+  const [fileError,   setFileError]   = useState<string | null>(null)
+  const [dragOver,    setDragOver]    = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // ---------------------------------------------------------------------------
-  // Shared: process parsed GPX points
-  // ---------------------------------------------------------------------------
   function applyPoints(points: LatLng[], label: string) {
     if (points.length < 2) {
       setFileError('Keine Route in dieser Datei gefunden.')
@@ -104,9 +97,6 @@ export function TourCheckClient() {
     setHits(newHits)
   }
 
-  // ---------------------------------------------------------------------------
-  // GPX file upload
-  // ---------------------------------------------------------------------------
   function processFile(file: File) {
     setFileError(null)
 
@@ -131,7 +121,7 @@ export function TourCheckClient() {
   function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (file) processFile(file)
-    e.target.value = '' // reset so the same file can be re-uploaded
+    e.target.value = ''
   }
 
   function handleDrop(e: React.DragEvent) {
@@ -141,53 +131,13 @@ export function TourCheckClient() {
     if (file) processFile(file)
   }
 
-  // ---------------------------------------------------------------------------
-  // Komoot import
-  // ---------------------------------------------------------------------------
-  async function handleKomootLoad() {
-    setFileError(null)
-
-    const tourRef = extractTourRef(komootUrl)
-    if (!tourRef) {
-      setFileError('Ungültige Komoot-URL.')
-      return
-    }
-
-    setKomootLoading(true)
-    try {
-      const res = await fetch(`/api/komoot?tourId=${tourRef.id}&tourType=${tourRef.type}`)
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        setFileError(json.error ?? 'Tour nicht gefunden oder privat.')
-        return
-      }
-      const text   = await res.text()
-      const points = parseGpx(text)
-      applyPoints(points, `Komoot-Tour ${tourRef.id}`)
-    } catch {
-      setFileError('Netzwerkfehler. Bitte versuche es erneut.')
-    } finally {
-      setKomootLoading(false)
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Clear
-  // ---------------------------------------------------------------------------
   function handleClear() {
     setRoutePoints([])
     setFileName(null)
     setHits([])
     setFileError(null)
-    setKomootUrl('')
   }
 
-  function handleTabSwitch(tab: 'gpx' | 'komoot') {
-    setActiveTab(tab)
-    handleClear()
-  }
-
-  // Closures displayed on the map: all non-resolved ones
   const mapClosures = closures.filter((c) => ACTIVE_STATUSES.has(c.status))
 
   return (
@@ -210,102 +160,41 @@ export function TourCheckClient() {
             Tour prüfen
           </h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Lade deine GPX-Route hoch oder gib einen Komoot-Link ein — wir zeigen dir sofort, ob aktive Sperren auf deinem Weg liegen.
+            Lade deine GPX-Route hoch und sieh sofort, ob aktive Sperren auf deinem Weg liegen.
           </p>
         </div>
 
-        {/* Tab switch */}
-        <div
-          className="flex rounded-xl p-1"
-          style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
-        >
-          {(['gpx', 'komoot'] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => handleTabSwitch(tab)}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors"
-              style={{
-                background: activeTab === tab ? 'var(--accent)' : 'transparent',
-                color:      activeTab === tab ? 'var(--bg-dark)' : 'var(--text-secondary)',
-              }}
-            >
-              {tab === 'gpx' ? (
-                <><Upload className="h-3.5 w-3.5" /> GPX hochladen</>
-              ) : (
-                <><Link className="h-3.5 w-3.5" /> Komoot-Link</>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Input area or file info */}
+        {/* Upload area or file info */}
         {!fileName ? (
-          activeTab === 'gpx' ? (
-            // GPX drag & drop
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl py-8 transition-colors"
-              style={{
-                border:     `2px dashed ${dragOver ? 'var(--accent)' : 'var(--border)'}`,
-                background: dragOver ? 'rgba(245,158,11,0.05)' : 'var(--bg-card)',
-              }}
-            >
-              <Upload className="h-8 w-8" style={{ color: 'var(--accent)' }} />
-              <div className="text-center">
-                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  GPX-Datei hochladen
-                </p>
-                <p className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  Drag &amp; Drop oder klicken · max. 5 MB
-                </p>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".gpx"
-                className="sr-only"
-                onChange={handleFileInput}
-              />
-            </div>
-          ) : (
-            // Komoot URL input
-            <div className="flex flex-col gap-3">
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  placeholder="https://www.komoot.com/tour/123456789"
-                  value={komootUrl}
-                  onChange={(e) => setKomootUrl(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleKomootLoad() }}
-                  className="flex-1 rounded-xl px-4 py-3 text-sm outline-none"
-                  style={{
-                    background:  'var(--bg-card)',
-                    border:      '1px solid var(--border)',
-                    color:       'var(--text-primary)',
-                    fontSize:    16,
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={handleKomootLoad}
-                  disabled={komootLoading || !komootUrl.trim()}
-                  className="shrink-0 rounded-xl px-4 py-3 text-sm font-semibold transition-colors disabled:opacity-50"
-                  style={{ background: 'var(--accent)', color: 'var(--bg-dark)' }}
-                >
-                  {komootLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Laden'}
-                </button>
-              </div>
-              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Nur öffentliche Komoot-Touren werden unterstützt.
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl py-8 transition-colors"
+            style={{
+              border:     `2px dashed ${dragOver ? 'var(--accent)' : 'var(--border)'}`,
+              background: dragOver ? 'rgba(245,158,11,0.05)' : 'var(--bg-card)',
+            }}
+          >
+            <Upload className="h-8 w-8" style={{ color: 'var(--accent)' }} />
+            <div className="text-center">
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                GPX-Datei hochladen
+              </p>
+              <p className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Drag &amp; Drop oder klicken · max. 5 MB
               </p>
             </div>
-          )
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".gpx"
+              className="sr-only"
+              onChange={handleFileInput}
+            />
+          </div>
         ) : (
-          // File info bar (shared for both tabs)
           <div
             className="flex items-center justify-between rounded-xl px-4 py-3"
             style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
