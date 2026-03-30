@@ -181,3 +181,10 @@ html {
 .leaflet-control-attribution a {
   color: var(--accent) !important;
 }
+
+/* Shift bottom controls up on mobile to avoid browser chrome / home indicator overlap */
+@media (max-width: 768px) {
+  .leaflet-bottom {
+    bottom: 36px !important;
+  }
+}
