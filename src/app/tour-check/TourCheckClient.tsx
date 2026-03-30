@@ -166,37 +166,39 @@ export function TourCheckClient() {
 
         {/* Upload area or file info */}
         {!fileName ? (
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl py-8 transition-colors"
-            style={{
-              border:     `2px dashed ${dragOver ? 'var(--accent)' : 'var(--border)'}`,
-              background: dragOver ? 'rgba(245,158,11,0.05)' : 'var(--bg-card)',
-            }}
-          >
-            <Upload className="h-8 w-8" style={{ color: 'var(--accent)' }} />
-            <div className="text-center">
-              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                GPX-Datei hochladen
-              </p>
-              <p className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Drag &amp; Drop oder klicken · max. 5 MB
-              </p>
+          <>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl py-8 transition-colors"
+              style={{
+                border:     `2px dashed ${dragOver ? 'var(--accent)' : 'var(--border)'}`,
+                background: dragOver ? 'rgba(245,158,11,0.05)' : 'var(--bg-card)',
+              }}
+            >
+              <Upload className="h-8 w-8" style={{ color: 'var(--accent)' }} />
+              <div className="text-center">
+                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  GPX-Datei hochladen
+                </p>
+                <p className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Drag &amp; Drop oder klicken · max. 5 MB
+                </p>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".gpx"
+                className="sr-only"
+                onChange={handleFileInput}
+              />
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".gpx"
-              className="sr-only"
-              onChange={handleFileInput}
-            />
-          </div>
-          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-            Komoot-Route exportieren: Tour öffnen → <span style={{ color: 'var(--text-primary)' }}>···</span> → GPX exportieren
-          </p>
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+              Komoot-Route exportieren: Tour öffnen → <span style={{ color: 'var(--text-primary)' }}>···</span> → GPX exportieren
+            </p>
+          </>
         ) : (
           <div
             className="flex items-center justify-between rounded-xl px-4 py-3"
