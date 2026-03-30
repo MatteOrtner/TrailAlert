@@ -19,9 +19,9 @@ CREATE POLICY "shared_routes_insert"
   ON shared_routes FOR INSERT
   WITH CHECK (true);
 
--- Auto-expiry: delete rows older than 30 days daily at 03:00 UTC
-SELECT cron.schedule(
-  'delete-expired-shared-routes',
-  '0 3 * * *',
-  $$DELETE FROM shared_routes WHERE created_at < now() - interval '30 days'$$
-);
+-- Auto-expiry (requires pg_cron extension — enable in Supabase Dashboard > Database > Extensions first):
+-- SELECT cron.schedule(
+--   'delete-expired-shared-routes',
+--   '0 3 * * *',
+--   $$DELETE FROM shared_routes WHERE created_at < now() - interval '30 days'$$
+-- );
