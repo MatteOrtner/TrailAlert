@@ -5,6 +5,7 @@ import { useRef, useState } from 'react'
 import { Upload, X, AlertTriangle, CheckCircle2, Loader2, ArrowLeft, Link } from 'lucide-react'
 import { useClosures } from '@/hooks/useClosures'
 import { pointToSegmentMeters } from '@/lib/geo'
+import { extractTourId } from '@/lib/komoot'
 import type { LatLng } from '@/lib/geo'
 import type { Closure } from '@/lib/types'
 
@@ -32,6 +33,8 @@ const SEVERITY_COLORS = {
   partial:      '#f59e0b',
   warning:      '#eab308',
 } as const
+
+const ACTIVE_STATUSES = new Set(['active', 'unconfirmed', 'pending_review'])
 
 // ---------------------------------------------------------------------------
 // GPX parser — extracts track points from raw XML text
@@ -64,14 +67,6 @@ function minDistanceToRoute(closure: Closure, route: LatLng[]): number {
 }
 
 // ---------------------------------------------------------------------------
-// Extract Komoot tour ID from any Komoot URL variant
-// ---------------------------------------------------------------------------
-function extractTourId(url: string): string | null {
-  const match = url.match(/\/tour\/(\d+)/)
-  return match ? match[1] : null
-}
-
-// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 export function TourCheckClient() {
@@ -97,9 +92,7 @@ export function TourCheckClient() {
       return
     }
 
-    const candidates = closures.filter(
-      (c) => c.status === 'active' || c.status === 'unconfirmed' || c.status === 'pending_review',
-    )
+    const candidates = closures.filter((c) => ACTIVE_STATUSES.has(c.status))
 
     const newHits = candidates
       .map((c) => ({ closure: c, distanceM: minDistanceToRoute(c, points) }))
@@ -195,9 +188,7 @@ export function TourCheckClient() {
   }
 
   // Closures displayed on the map: all non-resolved ones
-  const mapClosures = closures.filter(
-    (c) => c.status === 'active' || c.status === 'unconfirmed' || c.status === 'pending_review',
-  )
+  const mapClosures = closures.filter((c) => ACTIVE_STATUSES.has(c.status))
 
   return (
     <div className="flex flex-col" style={{ minHeight: '100svh', background: 'var(--bg-dark)' }}>

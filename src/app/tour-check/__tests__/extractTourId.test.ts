@@ -1,8 +1,4 @@
-// extractTourId is not exported from the component — copy the implementation here for testing
-function extractTourId(url: string): string | null {
-  const match = url.match(/\/tour\/(\d+)/)
-  return match ? match[1] : null
-}
+import { extractTourId } from '@/lib/komoot'
 
 describe('extractTourId', () => {
   it('extracts ID from simple URL', () => {
