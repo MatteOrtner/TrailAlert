@@ -195,9 +195,19 @@ export function TourCheckClient() {
                 onChange={handleFileInput}
               />
             </div>
-            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-              Komoot-Route exportieren: Tour öffnen → <span style={{ color: 'var(--text-primary)' }}>···</span> → GPX exportieren
-            </p>
+            <div className="rounded-lg px-4 py-3" style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)' }}>
+              <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
+                So exportierst du deine Route:
+              </p>
+              <ol className="mt-2 ml-4 text-xs space-y-1" style={{ color: 'var(--text-secondary)', listStyleType: 'decimal' }}>
+                <li><strong style={{ color: 'var(--text-primary)' }}>Komoot:</strong> Tour öffnen → <span style={{ color: 'var(--text-primary)' }}>···</span> (Menü) → GPX exportieren</li>
+                <li><strong style={{ color: 'var(--text-primary)' }}>Strava:</strong> Route öffnen → <span style={{ color: 'var(--text-primary)' }}>···</span> → Als GPX exportieren</li>
+                <li><strong style={{ color: 'var(--text-primary)' }}>AllTrails:</strong> Route öffnen → Download → GPX format</li>
+              </ol>
+              <p className="mt-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Die heruntergeladene .gpx-Datei kannst du dann hier hochladen.
+              </p>
+            </div>
           </>
         ) : (
           <div
