@@ -1,8 +1,8 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useRef, useState } from 'react'
-import { Upload, X, AlertTriangle, CheckCircle2, Loader2, ArrowLeft } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Upload, X, AlertTriangle, CheckCircle2, Loader2, ArrowLeft, Share2, Check } from 'lucide-react'
 import { useClosures } from '@/hooks/useClosures'
 import { pointToSegmentMeters } from '@/lib/geo'
 import type { LatLng } from '@/lib/geo'
@@ -71,14 +71,49 @@ function minDistanceToRoute(closure: Closure, route: LatLng[]): number {
 export function TourCheckClient() {
   const { closures, loading: closuresLoading } = useClosures()
 
-  const [routePoints, setRoutePoints] = useState<LatLng[]>([])
-  const [fileName,    setFileName]    = useState<string | null>(null)
-  const [hits,        setHits]        = useState<{ closure: Closure; distanceM: number }[]>([])
-  const [fileError,   setFileError]   = useState<string | null>(null)
-  const [dragOver,    setDragOver]    = useState(false)
+  const [routePoints,        setRoutePoints]        = useState<LatLng[]>([])
+  const [fileName,           setFileName]           = useState<string | null>(null)
+  const [hits,               setHits]               = useState<{ closure: Closure; distanceM: number }[]>([])
+  const [fileError,          setFileError]          = useState<string | null>(null)
+  const [dragOver,           setDragOver]           = useState(false)
+  const [shareLoading,       setShareLoading]       = useState(false)
+  const [shareCopied,        setShareCopied]        = useState(false)
+  const [routeLoadingFromUrl, setRouteLoadingFromUrl] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // ---------------------------------------------------------------------------
+  // On mount: load route from ?route= URL param if present
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('route')
+    if (!id) return
+
+    setRouteLoadingFromUrl(true)
+    setFileError(null)
+
+    fetch(`/api/routes/${id}`)
+      .then(async (res) => {
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}))
+          setFileError(json.error ?? 'Dieser Link ist abgelaufen oder ungültig.')
+          return
+        }
+        const { routePoints: pts, fileName: name } = await res.json()
+        applyPoints(pts, name)
+      })
+      .catch(() => {
+        setFileError('Netzwerkfehler. Bitte versuche es erneut.')
+      })
+      .finally(() => {
+        setRouteLoadingFromUrl(false)
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ---------------------------------------------------------------------------
+  // Shared: process parsed GPX points
+  // ---------------------------------------------------------------------------
   function applyPoints(points: LatLng[], label: string) {
     if (points.length < 2) {
       setFileError('Keine Route in dieser Datei gefunden.')
@@ -97,6 +132,9 @@ export function TourCheckClient() {
     setHits(newHits)
   }
 
+  // ---------------------------------------------------------------------------
+  // GPX file upload
+  // ---------------------------------------------------------------------------
   function processFile(file: File) {
     setFileError(null)
 
@@ -131,6 +169,36 @@ export function TourCheckClient() {
     if (file) processFile(file)
   }
 
+  // ---------------------------------------------------------------------------
+  // Share
+  // ---------------------------------------------------------------------------
+  async function handleShare() {
+    setShareLoading(true)
+    try {
+      const res = await fetch('/api/routes', {
+        method:  'POST',
+        headers: { 'content-type': 'application/json' },
+        body:    JSON.stringify({ routePoints, fileName }),
+      })
+      if (!res.ok) {
+        setFileError('Route konnte nicht geteilt werden. Bitte versuche es erneut.')
+        return
+      }
+      const { id } = await res.json()
+      const url = `${window.location.origin}/tour-check?route=${id}`
+      await navigator.clipboard.writeText(url)
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+    } catch {
+      setFileError('Route konnte nicht geteilt werden. Bitte versuche es erneut.')
+    } finally {
+      setShareLoading(false)
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Clear
+  // ---------------------------------------------------------------------------
   function handleClear() {
     setRoutePoints([])
     setFileName(null)
@@ -164,68 +232,78 @@ export function TourCheckClient() {
           </p>
         </div>
 
-        {/* Upload area or file info */}
-        {!fileName ? (
-          <>
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl py-8 transition-colors"
-              style={{
-                border:     `2px dashed ${dragOver ? 'var(--accent)' : 'var(--border)'}`,
-                background: dragOver ? 'rgba(245,158,11,0.05)' : 'var(--bg-card)',
-              }}
-            >
-              <Upload className="h-8 w-8" style={{ color: 'var(--accent)' }} />
-              <div className="text-center">
-                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  GPX-Datei hochladen
+        {/* Loading from shared URL */}
+        {routeLoadingFromUrl && (
+          <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <Loader2 className="h-5 w-5 animate-spin shrink-0" style={{ color: 'var(--accent)' }} />
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Route wird geladen…</span>
+          </div>
+        )}
+
+        {/* Upload area or file info — hidden while loading from URL */}
+        {!routeLoadingFromUrl && (
+          !fileName ? (
+            <>
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl py-8 transition-colors"
+                style={{
+                  border:     `2px dashed ${dragOver ? 'var(--accent)' : 'var(--border)'}`,
+                  background: dragOver ? 'rgba(245,158,11,0.05)' : 'var(--bg-card)',
+                }}
+              >
+                <Upload className="h-8 w-8" style={{ color: 'var(--accent)' }} />
+                <div className="text-center">
+                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    GPX-Datei hochladen
+                  </p>
+                  <p className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    Drag &amp; Drop oder klicken · max. 5 MB
+                  </p>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".gpx"
+                  className="sr-only"
+                  onChange={handleFileInput}
+                />
+              </div>
+              <div className="rounded-lg px-4 py-3" style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  So exportierst du deine Route:
                 </p>
-                <p className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  Drag &amp; Drop oder klicken · max. 5 MB
+                <ol className="mt-2 ml-4 text-xs space-y-1" style={{ color: 'var(--text-secondary)', listStyleType: 'decimal' }}>
+                  <li><strong style={{ color: 'var(--text-primary)' }}>Komoot:</strong> Tour öffnen → <span style={{ color: 'var(--text-primary)' }}>···</span> (Menü) → GPX-Datei herunterladen</li>
+                  <li><strong style={{ color: 'var(--text-primary)' }}>Strava:</strong> Route öffnen → <span style={{ color: 'var(--text-primary)' }}>···</span> → Als GPX exportieren</li>
+                  <li><strong style={{ color: 'var(--text-primary)' }}>AllTrails:</strong> Route öffnen → Download → GPX format</li>
+                </ol>
+                <p className="mt-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Die heruntergeladene .gpx-Datei kannst du dann hier hochladen.
                 </p>
               </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".gpx"
-                className="sr-only"
-                onChange={handleFileInput}
-              />
-            </div>
-            <div className="rounded-lg px-4 py-3" style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)' }}>
-              <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
-                So exportierst du deine Route:
-              </p>
-              <ol className="mt-2 ml-4 text-xs space-y-1" style={{ color: 'var(--text-secondary)', listStyleType: 'decimal' }}>
-                <li><strong style={{ color: 'var(--text-primary)' }}>Komoot:</strong> Tour öffnen → <span style={{ color: 'var(--text-primary)' }}>···</span> (Menü) → GPX-Datei herunterladen</li>
-                <li><strong style={{ color: 'var(--text-primary)' }}>Strava:</strong> Route öffnen → <span style={{ color: 'var(--text-primary)' }}>···</span> → Als GPX exportieren</li>
-                <li><strong style={{ color: 'var(--text-primary)' }}>AllTrails:</strong> Route öffnen → Download → GPX format</li>
-              </ol>
-              <p className="mt-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Die heruntergeladene .gpx-Datei kannst du dann hier hochladen.
-              </p>
-            </div>
-          </>
-        ) : (
-          <div
-            className="flex items-center justify-between rounded-xl px-4 py-3"
-            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
-          >
-            <span className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              {fileName}
-            </span>
-            <button
-              type="button"
-              onClick={handleClear}
-              className="ml-3 shrink-0 rounded-md p-1 transition-colors"
-              style={{ color: 'var(--text-secondary)' }}
+            </>
+          ) : (
+            <div
+              className="flex items-center justify-between rounded-xl px-4 py-3"
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
             >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
+              <span className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                {fileName}
+              </span>
+              <button
+                type="button"
+                onClick={handleClear}
+                className="ml-3 shrink-0 rounded-md p-1 transition-colors"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )
         )}
 
         {/* Error */}
@@ -245,18 +323,35 @@ export function TourCheckClient() {
             {hits.length === 0 ? (
               <>
                 <CheckCircle2 className="h-5 w-5 shrink-0" style={{ color: '#22c55e' }} />
-                <span className="text-sm font-semibold" style={{ color: '#22c55e' }}>
+                <span className="flex-1 text-sm font-semibold" style={{ color: '#22c55e' }}>
                   Alles klar — keine Sperren auf deiner Route
                 </span>
               </>
             ) : (
               <>
                 <AlertTriangle className="h-5 w-5 shrink-0" style={{ color: '#f59e0b' }} />
-                <span className="text-sm font-semibold" style={{ color: '#f59e0b' }}>
+                <span className="flex-1 text-sm font-semibold" style={{ color: '#f59e0b' }}>
                   {hits.length} {hits.length === 1 ? 'Sperre' : 'Sperren'} auf deiner Route
                 </span>
               </>
             )}
+            {/* Share button */}
+            <button
+              type="button"
+              onClick={handleShare}
+              disabled={shareLoading}
+              className="shrink-0 rounded-md p-1 transition-colors disabled:opacity-50"
+              style={{ color: hits.length === 0 ? '#22c55e' : '#f59e0b' }}
+              title="Route teilen"
+            >
+              {shareLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : shareCopied ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Share2 className="h-4 w-4" />
+              )}
+            </button>
           </div>
         )}
 
