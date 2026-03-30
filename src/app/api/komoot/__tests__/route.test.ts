@@ -35,6 +35,16 @@ describe('GET /api/komoot', () => {
     expect(json.error).toBe('Tour nicht gefunden oder privat.')
   })
 
+  it('returns 502 when Komoot returns 5xx', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response('Internal Server Error', { status: 500 })
+    )
+    const res = await GET(makeRequest({ tourId: '123456789' }))
+    expect(res.status).toBe(502)
+    const json = await res.json()
+    expect(json.error).toBe('Netzwerkfehler. Bitte versuche es erneut.')
+  })
+
   it('returns GPX text with correct content-type on success', async () => {
     const fakeGpx = '<gpx><trk><trkseg><trkpt lat="46.0" lon="12.5"/></trkseg></trk></gpx>'
     jest.spyOn(global, 'fetch').mockResolvedValueOnce(

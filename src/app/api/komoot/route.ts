@@ -22,13 +22,28 @@ export async function GET(request: Request) {
   }
 
   if (!komootRes.ok) {
+    if (komootRes.status >= 500) {
+      return NextResponse.json(
+        { error: 'Netzwerkfehler. Bitte versuche es erneut.' },
+        { status: 502 },
+      )
+    }
     return NextResponse.json(
       { error: 'Tour nicht gefunden oder privat.' },
       { status: 404 },
     )
   }
 
-  const gpxText = await komootRes.text()
+  let gpxText: string
+  try {
+    gpxText = await komootRes.text()
+  } catch {
+    return NextResponse.json(
+      { error: 'Netzwerkfehler. Bitte versuche es erneut.' },
+      { status: 502 },
+    )
+  }
+
   return new Response(gpxText, {
     status: 200,
     headers: { 'content-type': 'text/xml' },
