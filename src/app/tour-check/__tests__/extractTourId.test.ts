@@ -10,6 +10,9 @@ describe('extractTourId', () => {
   it('extracts ID from komoot.de URL', () => {
     expect(extractTourId('https://www.komoot.de/tour/987654321')).toBe('987654321')
   })
+  it('extracts ID from smarttour URL', () => {
+    expect(extractTourId('https://www.komoot.com/smarttour/1942539?ref=wdd')).toBe('1942539')
+  })
   it('returns null for invalid URL', () => {
     expect(extractTourId('https://www.komoot.com/collection/12345')).toBeNull()
   })
