@@ -24,11 +24,10 @@ export async function POST(request: Request) {
   }
 
   for (const pt of routePoints as unknown[]) {
+    const p = pt as { lat?: unknown; lng?: unknown }
     if (
-      typeof (pt as { lat?: unknown }).lat !== 'number' ||
-      !isFinite((pt as { lat: number }).lat) ||
-      typeof (pt as { lng?: unknown }).lng !== 'number' ||
-      !isFinite((pt as { lng: number }).lng)
+      typeof p.lat !== 'number' || !isFinite(p.lat) || p.lat < -90 || p.lat > 90 ||
+      typeof p.lng !== 'number' || !isFinite(p.lng) || p.lng < -180 || p.lng > 180
     ) {
       return NextResponse.json(
         { error: 'Alle Punkte müssen gültige lat/lng-Koordinaten haben.' },

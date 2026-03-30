@@ -68,9 +68,18 @@ describe('POST /api/routes', () => {
       fileName: 'my-tour.gpx',
     }))
     expect(res.status).toBe(201)
+    expect(mockInsert).toHaveBeenCalledTimes(1)
     const json = await res.json()
     expect(typeof json.id).toBe('string')
     expect(json.id).toHaveLength(8)
+  })
+
+  it('returns 400 when a point has out-of-range coordinates', async () => {
+    const res = await POST(makeRequest({
+      routePoints: [{ lat: 91, lng: 0 }, { lat: 46.1, lng: 12.6 }],
+      fileName: 'test.gpx',
+    }))
+    expect(res.status).toBe(400)
   })
 
   it('returns 502 when Supabase insert fails', async () => {
