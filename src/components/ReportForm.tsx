@@ -336,7 +336,7 @@ export function ReportForm() {
     borderRadius: 8,
     color:        'var(--text-primary)',
     padding:      '8px 12px',
-    fontSize:     14,
+    fontSize:     16,
     outline:      'none',
   }
 
