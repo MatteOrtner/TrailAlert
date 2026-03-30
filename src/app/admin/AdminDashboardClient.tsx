@@ -193,10 +193,10 @@ export function AdminDashboardClient({ initialClosures }: { initialClosures: Clo
           </div>
         ))}
 
-        {closures.length === 0 && (
+        {closures.filter(c => filterStatus === 'all' || c.status === filterStatus).length === 0 && (
           <div className="flex flex-col items-center justify-center gap-3 py-20 text-text-secondary">
             <ShieldAlert className="h-10 w-10 opacity-20" />
-            <p>Keine Meldungen in der Datenbank.</p>
+            <p>{closures.length === 0 ? 'Keine Meldungen in der Datenbank.' : 'Keine Meldungen für diesen Filter.'}</p>
           </div>
         )}
       </div>
