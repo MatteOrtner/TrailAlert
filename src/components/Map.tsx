@@ -89,14 +89,11 @@ function LocationControl({ position, loading, error, requestLocation, hidden }: 
 // ---------------------------------------------------------------------------
 
 function MapPositionPicker() {
-  const { onPositionPickedRef, setIsPickingLocation } = useReportForm()
+  const { onPositionPickedRef } = useReportForm()
 
   useMapEvents({
     click(e) {
-      if (onPositionPickedRef.current) {
-        onPositionPickedRef.current(e.latlng.lat, e.latlng.lng)
-        setIsPickingLocation(false)
-      }
+      onPositionPickedRef.current?.(e.latlng.lat, e.latlng.lng)
     },
   })
 
