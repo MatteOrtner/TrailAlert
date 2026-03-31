@@ -405,7 +405,7 @@ export function TourCheckClient() {
       </div>
 
       {/* ── Map ───────────────────────────────────────────────────────── */}
-      <div className="flex-1" style={{ minHeight: 400 }}>
+      <div style={{ height: 420 }}>
         {closuresLoading ? (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'var(--accent)' }} />

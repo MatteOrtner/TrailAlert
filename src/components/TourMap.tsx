@@ -14,6 +14,29 @@ const DEFAULT_CENTER: [number, number] = [46.8489, 12.7672]
 const DEFAULT_ZOOM = 11
 
 // ---------------------------------------------------------------------------
+// Fits the map to the route bounds whenever the route changes
+// ---------------------------------------------------------------------------
+function FitBoundsController({ positions }: { positions: [number, number][] }) {
+  const map = useMap()
+  const prevLen = useRef(0)
+
+  useEffect(() => {
+    if (positions.length < 2) return
+    if (positions.length === prevLen.current) return
+    prevLen.current = positions.length
+
+    const lats = positions.map((p) => p[0])
+    const lngs = positions.map((p) => p[1])
+    map.fitBounds(
+      [[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]],
+      { padding: [32, 32], animate: true, duration: 0.8 },
+    )
+  }, [positions, map])
+
+  return null
+}
+
+// ---------------------------------------------------------------------------
 // Inner component: flies the map to the selected closure when it changes
 // ---------------------------------------------------------------------------
 function FlyToController({
@@ -75,6 +98,7 @@ export function TourMap({ routePoints, closures, selectedClosureId }: TourMapPro
         />
       ))}
 
+      <FitBoundsController positions={positions} />
       <FlyToController closureId={selectedClosureId} closures={closures} />
     </MapContainer>
   )
