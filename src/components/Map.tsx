@@ -11,6 +11,7 @@ import { useReportForm } from '@/contexts/ReportFormContext'
 import { useWatchAreaPanel } from '@/contexts/WatchAreaContext'
 import { useWatchAreas } from '@/hooks/useWatchAreas'
 import { useAuth } from '@/contexts/AuthContext'
+import { useHeaderMenu } from '@/contexts/HeaderMenuContext'
 import { ClosureMarker } from './ClosureMarker'
 import { FilterSidebar, FilterToggleButton } from './FilterSidebar'
 import { ReportForm } from './ReportForm'
@@ -30,7 +31,7 @@ const TILE_ATTRIBUTION =
 // GPS button — inside MapContainer (needs useMap)
 // ---------------------------------------------------------------------------
 
-function LocationControl() {
+function LocationControl({ hidden }: { hidden?: boolean }) {
   const map = useMap()
   const { position, loading, error, requestLocation } = useGeolocation()
 
@@ -39,6 +40,8 @@ function LocationControl() {
       map.setView([position.latitude, position.longitude], 14, { animate: true })
     }
   }, [position, map])
+
+  if (hidden) return null
 
   return (
     <div className="leaflet-bottom leaflet-left" style={{ zIndex: 1000 }}>
@@ -147,6 +150,7 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
   const { closures, total, loading, error, filters, setFilters } = useClosures()
   const { onSuccessRef, isPickingLocation, setAllClosures } = useReportForm()
   const { user }                          = useAuth()
+  const { menuOpen }                      = useHeaderMenu()
 
   useEffect(() => {
     setAllClosures(closures)
@@ -230,9 +234,9 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
             />
           ))}
 
-          <ZoomControl position="bottomright" />
+          {!sidebarOpen && <ZoomControl position="bottomright" />}
           <MapMovementTracker />
-          <LocationControl />
+          <LocationControl hidden={sidebarOpen} />
           <MapResizeHandler trigger={sidebarOpen} />
           <ZoomToNewClosureHandler target={zoomTarget} />
           {isPickingLocation && <MapPositionPicker />}
@@ -256,7 +260,14 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
         )}
 
         {/* Filter toggle button — offset below fixed header */}
-        <div className="absolute left-3 z-[1000]" style={{ top: 'calc(4rem + 0.75rem)' }}>
+        <div
+          className="absolute left-3 z-[1000] transition-opacity duration-150"
+          style={{
+            top: 'calc(4rem + 0.75rem)',
+            opacity: menuOpen ? 0 : 1,
+            pointerEvents: menuOpen ? 'none' : 'auto',
+          }}
+        >
           <FilterToggleButton
             open={sidebarOpen}
             onClick={() => setSidebarOpen((o) => !o)}

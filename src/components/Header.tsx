@@ -8,9 +8,10 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useOnboarding } from '@/hooks/useOnboarding'
 import { useAuthModal } from '@/contexts/AuthModalContext'
 import { OnboardingSheet } from './OnboardingSheet'
+import { useHeaderMenu } from '@/contexts/HeaderMenuContext'
 
 export function Header() {
-  const [menuOpen, setMenuOpen] = useState(false)
+  const { menuOpen, setMenuOpen } = useHeaderMenu()
   const { open: openReport } = useReportForm()
   const { user } = useAuth()
   const { hasSeen, markSeen } = useOnboarding()
