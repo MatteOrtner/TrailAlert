@@ -88,7 +88,7 @@ export function TourMap({ routePoints, closures, selectedClosureId }: TourMapPro
       />
 
       {positions.length > 1 && (
-        <Polyline positions={positions} color="#f59e0b" weight={4} opacity={0.85} />
+        <Polyline positions={positions} color="#3b82f6" weight={5} opacity={0.9} />
       )}
 
       {closures.map((c) => (
