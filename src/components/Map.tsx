@@ -11,9 +11,11 @@ import { useReportForm } from '@/contexts/ReportFormContext'
 import { useWatchAreaPanel } from '@/contexts/WatchAreaContext'
 import { useWatchAreas } from '@/hooks/useWatchAreas'
 import { useAuth } from '@/contexts/AuthContext'
+import { useWelcome } from '@/hooks/useWelcome'
 import { ClosureMarker } from './ClosureMarker'
 import { FilterSidebar, FilterToggleButton } from './FilterSidebar'
 import { ReportForm } from './ReportForm'
+import { WelcomeSheet } from './WelcomeSheet'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -147,6 +149,7 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
   const { closures, total, loading, error, filters, setFilters } = useClosures()
   const { onSuccessRef, isPickingLocation, setAllClosures } = useReportForm()
   const { user }                          = useAuth()
+  const { showWelcome, dismiss: dismissWelcome } = useWelcome()
 
   useEffect(() => {
     setAllClosures(closures)
@@ -331,6 +334,9 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
 
       {/* Report form slide-over */}
       <ReportForm />
+
+      {/* First-visit welcome onboarding — shown once, after initial load */}
+      {!loading && showWelcome && <WelcomeSheet onDismiss={dismissWelcome} />}
 
     </div>
   )
