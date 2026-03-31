@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
-import { X, SlidersHorizontal } from 'lucide-react'
+import { X, SlidersHorizontal, Locate } from 'lucide-react'
 import {
   DEFAULT_FILTERS,
   isDefaultFilters,
@@ -24,6 +24,14 @@ const SEVERITY_OPTIONS: { value: SeverityLevel; label: string; color: string }[]
   { value: 'full_closure', label: 'Voll gesperrt', color: '#ef4444' },
   { value: 'partial',      label: 'Teilweise',     color: '#f59e0b' },
   { value: 'warning',      label: 'Warnung',       color: '#eab308' },
+]
+
+const DISTANCE_OPTIONS: { value: number | null; label: string }[] = [
+  { value: null, label: 'Alle' },
+  { value: 5,   label: '5 km' },
+  { value: 10,  label: '10 km' },
+  { value: 25,  label: '25 km' },
+  { value: 50,  label: '50 km' },
 ]
 
 const TIME_OPTIONS: { value: ClosureFilters['timeRange']; label: string }[] = [
@@ -124,12 +132,14 @@ function Toggle({ checked, onChange, label }: ToggleProps) {
 // ---------------------------------------------------------------------------
 
 export interface FilterSidebarProps {
-  open:       boolean
-  onClose:    () => void
-  filters:    ClosureFilters
-  setFilters: (f: ClosureFilters) => void
-  count:      number
-  total:      number
+  open:              boolean
+  onClose:           () => void
+  filters:           ClosureFilters
+  setFilters:        (f: ClosureFilters) => void
+  count:             number
+  total:             number
+  userPosition:      { lat: number; lng: number } | null
+  onRequestLocation: () => void
 }
 
 export function FilterSidebar({
@@ -139,6 +149,8 @@ export function FilterSidebar({
   setFilters,
   count,
   total,
+  userPosition,
+  onRequestLocation,
 }: FilterSidebarProps) {
   const touchStartY = useRef(0)
 
@@ -287,6 +299,45 @@ export function FilterSidebar({
                 </button>
               ))}
             </div>
+          </Section>
+
+          <div className="h-px" style={{ background: 'var(--border)' }} />
+
+          <Section title="Entfernung">
+            {!userPosition ? (
+              <button
+                type="button"
+                onClick={onRequestLocation}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium w-full transition-colors"
+                style={{ background: 'var(--bg-dark)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+              >
+                <Locate className="h-4 w-4 shrink-0" />
+                GPS aktivieren
+              </button>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {DISTANCE_OPTIONS.map((opt) => (
+                  <button
+                    key={String(opt.value)}
+                    type="button"
+                    onClick={() => setFilters({ ...filters, maxDistanceKm: opt.value })}
+                    className="flex w-full cursor-pointer items-center gap-2.5 py-1.5 select-none text-left"
+                  >
+                    <span
+                      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors"
+                      style={{
+                        borderColor: filters.maxDistanceKm === opt.value ? 'var(--accent)' : 'var(--border)',
+                      }}
+                    >
+                      {filters.maxDistanceKm === opt.value && (
+                        <span className="h-2 w-2 rounded-full" style={{ background: 'var(--accent)' }} />
+                      )}
+                    </span>
+                    <span className="text-sm text-text-primary">{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </Section>
 
           <div className="h-px" style={{ background: 'var(--border)' }} />

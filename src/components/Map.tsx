@@ -3,7 +3,7 @@
 import 'leaflet/dist/leaflet.css'
 
 import { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, Circle, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, Circle, Polyline, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
 import { Locate, Loader2 } from 'lucide-react'
 import { useClosures, isDefaultFilters, DEFAULT_FILTERS } from '@/hooks/useClosures'
 import { useGeolocation } from '@/hooks/useGeolocation'
@@ -11,6 +11,8 @@ import { useReportForm } from '@/contexts/ReportFormContext'
 import { useWatchAreaPanel } from '@/contexts/WatchAreaContext'
 import { useWatchAreas } from '@/hooks/useWatchAreas'
 import { useAuth } from '@/contexts/AuthContext'
+import { useHeaderMenu } from '@/contexts/HeaderMenuContext'
+import type { SeverityLevel } from '@/lib/types'
 import { ClosureMarker } from './ClosureMarker'
 import { FilterSidebar, FilterToggleButton } from './FilterSidebar'
 import { ReportForm } from './ReportForm'
@@ -18,6 +20,12 @@ import { ReportForm } from './ReportForm'
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
+
+const SEVERITY_COLORS: Record<SeverityLevel, string> = {
+  full_closure: '#ef4444',
+  partial:      '#f59e0b',
+  warning:      '#eab308',
+}
 
 // OpenTopoMap — topographic tiles with elevation contours, forest roads,
 // hiking & MTB trails. Subdomains a/b/c only (d does not exist).
@@ -30,15 +38,24 @@ const TILE_ATTRIBUTION =
 // GPS button — inside MapContainer (needs useMap)
 // ---------------------------------------------------------------------------
 
-function LocationControl() {
+interface LocationControlProps {
+  position:        GeolocationCoordinates | null
+  loading:         boolean
+  error:           string | null
+  requestLocation: () => void
+  hidden?:         boolean
+}
+
+function LocationControl({ position, loading, error, requestLocation, hidden }: LocationControlProps) {
   const map = useMap()
-  const { position, loading, error, requestLocation } = useGeolocation()
 
   useEffect(() => {
     if (position) {
       map.setView([position.latitude, position.longitude], 14, { animate: true })
     }
   }, [position, map])
+
+  if (hidden) return null
 
   return (
     <div className="leaflet-bottom leaflet-left" style={{ zIndex: 1000 }}>
@@ -72,14 +89,11 @@ function LocationControl() {
 // ---------------------------------------------------------------------------
 
 function MapPositionPicker() {
-  const { onPositionPickedRef, setIsPickingLocation } = useReportForm()
+  const { onPositionPickedRef } = useReportForm()
 
   useMapEvents({
     click(e) {
-      if (onPositionPickedRef.current) {
-        onPositionPickedRef.current(e.latlng.lat, e.latlng.lng)
-        setIsPickingLocation(false)
-      }
+      onPositionPickedRef.current?.(e.latlng.lat, e.latlng.lng)
     },
   })
 
@@ -144,9 +158,12 @@ function MapMovementTracker() {
 // ---------------------------------------------------------------------------
 
 export default function Map({ targetClosureId }: { targetClosureId?: string | null }) {
-  const { closures, total, loading, error, filters, setFilters } = useClosures()
-  const { onSuccessRef, isPickingLocation, setAllClosures } = useReportForm()
+  const { position, loading: geoLoading, error: geoError, requestLocation } = useGeolocation()
+  const userPosition = position ? { lat: position.latitude, lng: position.longitude } : null
+  const { closures, total, loading, error, filters, setFilters } = useClosures(userPosition)
+  const { onSuccessRef, isPickingLocation, setAllClosures, draftPath, isDrawingPath, hasDraftPosition } = useReportForm()
   const { user }                          = useAuth()
+  const { menuOpen }                      = useHeaderMenu()
 
   useEffect(() => {
     setAllClosures(closures)
@@ -181,6 +198,8 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
         setFilters={setFilters}
         count={closures.length}
         total={total}
+        userPosition={userPosition}
+        onRequestLocation={requestLocation}
       />
 
       {/* Map area */}
@@ -213,6 +232,29 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
             />
           ))}
 
+          {/* Closure path polylines */}
+          {closures.map((closure) =>
+            closure.path_points && closure.path_points.length >= 2 ? (
+              <Polyline
+                key={`path-${closure.id}`}
+                positions={closure.path_points.map((p) => [p.lat, p.lng] as [number, number])}
+                color={SEVERITY_COLORS[closure.severity]}
+                weight={5}
+                opacity={0.85}
+              />
+            ) : null
+          )}
+
+          {/* Live draft path while reporting */}
+          {draftPath.length >= 2 && (
+            <Polyline
+              positions={draftPath.map((p) => [p.lat, p.lng] as [number, number])}
+              color="#ef4444"
+              weight={5}
+              opacity={0.9}
+            />
+          )}
+
           {/* Watch area circles — visible for logged-in users */}
           {user && areas.map((area) => (
             <Circle
@@ -230,33 +272,47 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
             />
           ))}
 
-          <ZoomControl position="bottomright" />
+          {!sidebarOpen && <ZoomControl position="bottomright" />}
           <MapMovementTracker />
-          <LocationControl />
+          <LocationControl
+            position={position}
+            loading={geoLoading}
+            error={geoError}
+            requestLocation={requestLocation}
+            hidden={sidebarOpen}
+          />
           <MapResizeHandler trigger={sidebarOpen} />
           <ZoomToNewClosureHandler target={zoomTarget} />
           {isPickingLocation && <MapPositionPicker />}
         </MapContainer>
 
-        {/* Crosshair overlay shown while the user picks a location for a new report */}
-        {isPickingLocation && (
+        {/* Crosshair overlay: visible in State A (no position yet) and State C (drawing).
+            Hidden in State B (position placed, user deciding whether to draw path). */}
+        {isPickingLocation && (!hasDraftPosition || isDrawingPath) && (
           <div
             className="pointer-events-none absolute inset-0 z-[999] flex items-center justify-center"
             style={{ paddingBottom: 100 }}
           >
             <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-              <circle cx="18" cy="18" r="10" stroke="#f59e0b" strokeWidth="2.5" fill="none" opacity="0.9"/>
-              <line x1="18" y1="0" x2="18" y2="10" stroke="#f59e0b" strokeWidth="2" opacity="0.9"/>
-              <line x1="18" y1="26" x2="18" y2="36" stroke="#f59e0b" strokeWidth="2" opacity="0.9"/>
-              <line x1="0" y1="18" x2="10" y2="18" stroke="#f59e0b" strokeWidth="2" opacity="0.9"/>
-              <line x1="26" y1="18" x2="36" y2="18" stroke="#f59e0b" strokeWidth="2" opacity="0.9"/>
-              <circle cx="18" cy="18" r="2.5" fill="#f59e0b" opacity="0.9"/>
+              <circle cx="18" cy="18" r="10" stroke="#ef4444" strokeWidth="2.5" fill="none" opacity="0.9"/>
+              <line x1="18" y1="0" x2="18" y2="10" stroke="#ef4444" strokeWidth="2" opacity="0.9"/>
+              <line x1="18" y1="26" x2="18" y2="36" stroke="#ef4444" strokeWidth="2" opacity="0.9"/>
+              <line x1="0" y1="18" x2="10" y2="18" stroke="#ef4444" strokeWidth="2" opacity="0.9"/>
+              <line x1="26" y1="18" x2="36" y2="18" stroke="#ef4444" strokeWidth="2" opacity="0.9"/>
+              <circle cx="18" cy="18" r="2.5" fill="#ef4444" opacity="0.9"/>
             </svg>
           </div>
         )}
 
         {/* Filter toggle button — offset below fixed header */}
-        <div className="absolute left-3 z-[1000]" style={{ top: 'calc(4rem + 0.75rem)' }}>
+        <div
+          className="absolute left-3 z-[1000] transition-opacity duration-150"
+          style={{
+            top: 'calc(4rem + 0.75rem)',
+            opacity: menuOpen ? 0 : 1,
+            pointerEvents: menuOpen ? 'none' : 'auto',
+          }}
+        >
           <FilterToggleButton
             open={sidebarOpen}
             onClick={() => setSidebarOpen((o) => !o)}

@@ -20,6 +20,15 @@ interface ReportFormContextType {
   // Active closures from the map — used for duplicate detection
   allClosures:    Closure[]
   setAllClosures: (closures: Closure[]) => void
+  // Live path being drawn — shared so Map.tsx can render a preview polyline
+  draftPath:    { lat: number; lng: number }[]
+  setDraftPath: (pts: { lat: number; lng: number }[]) => void
+  // True when user is in path-drawing sub-state (State C)
+  isDrawingPath:    boolean
+  setIsDrawingPath: (v: boolean) => void
+  // True once the initial marker point has been placed (States B and C)
+  hasDraftPosition:    boolean
+  setHasDraftPosition: (v: boolean) => void
 }
 
 const ReportFormContext = createContext<ReportFormContextType | null>(null)
@@ -29,6 +38,9 @@ export function ReportFormProvider({ children }: { children: React.ReactNode }) 
   const [reportCount, setReportCount]         = useState(0)
   const [isPickingLocation, setIsPickingLocation] = useState(false)
   const [allClosures, setAllClosures]         = useState<Closure[]>([])
+  const [draftPath, setDraftPath]             = useState<{ lat: number; lng: number }[]>([])
+  const [isDrawingPath, setIsDrawingPath]       = useState(false)
+  const [hasDraftPosition, setHasDraftPosition] = useState(false)
   const onSuccessRef      = useRef<((lat: number, lng: number) => void) | null>(null)
   const onPositionPickedRef = useRef<((lat: number, lng: number) => void) | null>(null)
 
@@ -46,6 +58,12 @@ export function ReportFormProvider({ children }: { children: React.ReactNode }) 
         onPositionPickedRef,
         allClosures,
         setAllClosures,
+        draftPath,
+        setDraftPath,
+        isDrawingPath,
+        setIsDrawingPath,
+        hasDraftPosition,
+        setHasDraftPosition,
       }}
     >
       {children}

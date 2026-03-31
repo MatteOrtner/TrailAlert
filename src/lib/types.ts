@@ -19,6 +19,7 @@ export interface Closure {
   downvotes: number
   created_at: string
   updated_at: string
+  path_points: { lat: number; lng: number }[] | null
 }
 
 export interface Vote {

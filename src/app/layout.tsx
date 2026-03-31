@@ -9,6 +9,7 @@ import { WatchAreaManager } from '@/components/WatchAreaManager'
 import { AuthModal } from '@/components/AuthModal'
 import { AuthModalProvider } from '@/contexts/AuthModalContext'
 import { ReportSuccessToast } from '@/components/ReportSuccessToast'
+import { HeaderMenuProvider } from '@/contexts/HeaderMenuContext'
 
 const jakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -86,15 +87,17 @@ export default function RootLayout({
       <body className="overflow-hidden flex flex-col bg-bg-dark text-text-primary antialiased">
         <AuthProvider>
           <AuthModalProvider>
-            <ReportFormProvider>
-              <WatchAreaProvider>
-                <Header />
-                <WatchAreaManager />
-                <AuthModal />
-                <ReportSuccessToast />
-                <main>{children}</main>
-              </WatchAreaProvider>
-            </ReportFormProvider>
+            <HeaderMenuProvider>
+              <ReportFormProvider>
+                <WatchAreaProvider>
+                  <Header />
+                  <WatchAreaManager />
+                  <AuthModal />
+                  <ReportSuccessToast />
+                  <main>{children}</main>
+                </WatchAreaProvider>
+              </ReportFormProvider>
+            </HeaderMenuProvider>
           </AuthModalProvider>
         </AuthProvider>
       </body>

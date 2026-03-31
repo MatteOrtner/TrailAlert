@@ -122,29 +122,47 @@ export function ReportForm() {
     isPickingLocation, setIsPickingLocation,
     onPositionPickedRef,
     allClosures,
+    setDraftPath,
+    isDrawingPath, setIsDrawingPath,
+    setHasDraftPosition,
   } = useReportForm()
   const { user } = useAuth()
   const geo = useGeolocation()
 
-  const [step, setStep]           = useState<Step>(0)
-  const [form, setForm]           = useState<FormState>(INITIAL_FORM)
-  const [errors, setErrors]       = useState<Partial<Record<keyof FormState, string>>>({})
-  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [step, setStep]                 = useState<Step>(0)
+  const [form, setForm]                 = useState<FormState>(INITIAL_FORM)
+  const [errors, setErrors]             = useState<Partial<Record<keyof FormState, string>>>({})
+  const [photoFile, setPhotoFile]       = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [photoError, setPhotoError]     = useState<string | null>(null)
-  const [submitting,    setSubmitting]    = useState(false)
-  const [submitError,   setSubmitError]   = useState<string | null>(null)
+  const [submitting,  setSubmitting]    = useState(false)
+  const [submitError, setSubmitError]   = useState<string | null>(null)
   const [dragOver, setDragOver]         = useState(false)
   const [nearbyClosures, setNearbyClosures] = useState<{ closure: Closure; distanceM: number }[]>([])
+  // Path drawing state (isDrawingPath lives in context so Map.tsx can read it)
+  const [pathPoints, setPathPoints] = useState<{ lat: number; lng: number }[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const touchStartY  = useRef(0)
   const router       = useRouter()
 
-  // Register position-picked callback so Map.tsx can deliver tapped lat/lng
+  // Keep context draftPath in sync so Map.tsx can render the live preview
+  useEffect(() => {
+    setDraftPath(pathPoints)
+  }, [pathPoints, setDraftPath])
+
+  // Register position-picked callback so Map.tsx can deliver tapped lat/lng.
+  // Behaviour differs by drawing sub-state:
+  //   • No position yet  → set position, stay in step 0 (show path prompt)
+  //   • Drawing path     → append point to path
   onPositionPickedRef.current = (lat, lng) => {
-    setForm((f) => ({ ...f, position: { lat, lng } }))
-    setErrors((e) => ({ ...e, position: undefined }))
-    setStep(1)
+    if (isDrawingPath) {
+      setPathPoints((prev) => [...prev, { lat, lng }])
+    } else if (!form.position) {
+      setForm((f) => ({ ...f, position: { lat, lng } }))
+      setErrors((e) => ({ ...e, position: undefined }))
+      setHasDraftPosition(true)
+      // Stay on step 0 — bottom bar will now show the "draw path?" prompt
+    }
   }
 
   // Enter picking mode whenever we're on step 0 and the form is open
@@ -159,6 +177,8 @@ export function ReportForm() {
   function handleClose() {
     close()
     setIsPickingLocation(false)
+    setIsDrawingPath(false)
+    setDraftPath([])
     // Reset after transition
     setTimeout(() => {
       setStep(0)
@@ -167,6 +187,9 @@ export function ReportForm() {
       setPhotoFile(null)
       setPhotoPreview(null)
       setPhotoError(null)
+      setIsDrawingPath(false)
+      setHasDraftPosition(false)
+      setPathPoints([])
     }, 300)
   }
 
@@ -182,12 +205,12 @@ export function ReportForm() {
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }))
   }
 
-  // --- GPS: when location arrives, set position and advance to step 1 ---
+  // --- GPS: when location arrives, set position but stay in step 0 so the
+  // user can optionally draw the path before proceeding ---
   useEffect(() => {
-    if (geo.position && isOpen && step === 0) {
+    if (geo.position && isOpen && step === 0 && !form.position) {
       setForm((f) => ({ ...f, position: { lat: geo.position!.latitude, lng: geo.position!.longitude } }))
-      setIsPickingLocation(false)
-      setStep(1)
+      setHasDraftPosition(true)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geo.position])
@@ -324,6 +347,7 @@ export function ReportForm() {
         photo_url:    photoUrl,
         reported_by:  user?.id ?? null,
         status:       'active',
+        path_points:  pathPoints.length >= 2 ? pathPoints : null,
       })
       .select()
       .single()
@@ -378,43 +402,128 @@ export function ReportForm() {
             boxShadow:  '0 -8px 32px rgba(0,0,0,0.5)',
           }}
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                Sperre melden — Schritt 1/3
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                Tippe auf die Karte oder nutze GPS
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleClose}
-              className="flex h-9 w-9 items-center justify-center rounded-lg"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={() => geo.requestLocation()}
-            disabled={geo.loading}
-            className="flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold"
-            style={{
-              background: 'var(--accent)',
-              color:      'var(--bg-dark)',
-              opacity:    geo.loading ? 0.7 : 1,
-            }}
-          >
-            {geo.loading
-              ? <Loader2 className="h-4 w-4 animate-spin" />
-              : <Locate className="h-4 w-4" />
-            }
-            Meinen Standort verwenden
-          </button>
-          {geo.error && (
-            <p className="text-xs" style={{ color: 'var(--danger)' }}>{geo.error}</p>
+          {/* ── State A: no position yet ── */}
+          {!form.position && (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Sperre melden — Schritt 1/3
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                    Tippe auf die Karte oder nutze GPS
+                  </p>
+                </div>
+                <button type="button" onClick={handleClose}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg"
+                  style={{ color: 'var(--text-secondary)' }}>
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => geo.requestLocation()}
+                disabled={geo.loading}
+                className="flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold"
+                style={{ background: 'var(--accent)', color: 'var(--bg-dark)', opacity: geo.loading ? 0.7 : 1 }}
+              >
+                {geo.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Locate className="h-4 w-4" />}
+                Meinen Standort verwenden
+              </button>
+              {geo.error && <p className="text-xs" style={{ color: 'var(--danger)' }}>{geo.error}</p>}
+            </>
+          )}
+
+          {/* ── State B: position set, offer path drawing ── */}
+          {form.position && !isDrawingPath && (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Ort markiert
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                    Möchtest du den gesperrten Streckenabschnitt einzeichnen?
+                  </p>
+                </div>
+                <button type="button" onClick={handleClose}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg"
+                  style={{ color: 'var(--text-secondary)' }}>
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsDrawingPath(true)}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold"
+                  style={{ border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                >
+                  Verlauf einzeichnen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold"
+                  style={{ background: 'var(--accent)', color: 'var(--bg-dark)' }}
+                >
+                  Weiter
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* ── State C: drawing path ── */}
+          {form.position && isDrawingPath && (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Verlauf einzeichnen
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                    {pathPoints.length === 0
+                      ? 'Tippe auf die Karte um Punkte zu setzen'
+                      : `${pathPoints.length} ${pathPoints.length === 1 ? 'Punkt' : 'Punkte'} gesetzt`}
+                  </p>
+                </div>
+                <button type="button" onClick={handleClose}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg"
+                  style={{ color: 'var(--text-secondary)' }}>
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPathPoints((p) => p.slice(0, -1))}
+                  disabled={pathPoints.length === 0}
+                  className="flex flex-1 items-center justify-center rounded-lg py-2.5 text-sm font-semibold"
+                  style={{
+                    border:   '1px solid var(--border)',
+                    color:    'var(--text-secondary)',
+                    opacity:  pathPoints.length === 0 ? 0.4 : 1,
+                  }}
+                >
+                  Rückgängig
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setIsDrawingPath(false); setStep(1) }}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold"
+                  style={{ background: 'var(--accent)', color: 'var(--bg-dark)' }}
+                >
+                  Fertig
+                  {pathPoints.length >= 2 && (
+                    <span className="rounded-full px-1.5 py-0.5 text-xs font-bold"
+                      style={{ background: 'rgba(0,0,0,0.2)' }}>
+                      {pathPoints.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}
