@@ -112,6 +112,21 @@ export function TourCheckClient() {
   }, [])
 
   // ---------------------------------------------------------------------------
+  // Recalculate hits whenever route or closures change.
+  // Handles the race condition where closures may not be loaded yet when a
+  // shared route URL is processed on mount.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (routePoints.length < 2 || closuresLoading) return
+    const candidates = closures.filter((c) => ACTIVE_STATUSES.has(c.status))
+    const newHits = candidates
+      .map((c) => ({ closure: c, distanceM: minDistanceToRoute(c, routePoints) }))
+      .filter(({ distanceM }) => distanceM <= COLLISION_RADIUS_M)
+      .sort((a, b) => a.distanceM - b.distanceM)
+    setHits(newHits)
+  }, [routePoints, closures, closuresLoading])
+
+  // ---------------------------------------------------------------------------
   // Shared: process parsed GPX points
   // ---------------------------------------------------------------------------
   function applyPoints(points: LatLng[], label: string) {
@@ -119,17 +134,8 @@ export function TourCheckClient() {
       setFileError('Keine Route in dieser Datei gefunden.')
       return
     }
-
-    const candidates = closures.filter((c) => ACTIVE_STATUSES.has(c.status))
-
-    const newHits = candidates
-      .map((c) => ({ closure: c, distanceM: minDistanceToRoute(c, points) }))
-      .filter(({ distanceM }) => distanceM <= COLLISION_RADIUS_M)
-      .sort((a, b) => a.distanceM - b.distanceM)
-
     setRoutePoints(points)
     setFileName(label)
-    setHits(newHits)
   }
 
   // ---------------------------------------------------------------------------
