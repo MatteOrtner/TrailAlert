@@ -78,6 +78,7 @@ export function TourMap({ routePoints, closures, selectedClosureId }: TourMapPro
       zoom={DEFAULT_ZOOM}
       style={{ width: '100%', height: '100%' }}
       zoomControl={false}
+      attributionControl={false}
     >
       <TileLayer
         url={TILE_URL}
