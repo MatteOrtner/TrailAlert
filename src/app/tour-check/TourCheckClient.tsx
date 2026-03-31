@@ -1,10 +1,10 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useRef, useState } from 'react'
-import { Upload, X, AlertTriangle, CheckCircle2, Loader2, ArrowLeft, Share2, Check } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Upload, X, AlertTriangle, CheckCircle2, Loader2, ArrowLeft, Share2, Check, MapPin } from 'lucide-react'
 import { useClosures } from '@/hooks/useClosures'
-import { pointToSegmentMeters } from '@/lib/geo'
+import { pointToSegmentMeters, haversineMeters } from '@/lib/geo'
 import type { LatLng } from '@/lib/geo'
 import type { Closure } from '@/lib/types'
 
@@ -76,11 +76,22 @@ export function TourCheckClient() {
   const [hits,               setHits]               = useState<{ closure: Closure; distanceM: number }[]>([])
   const [fileError,          setFileError]          = useState<string | null>(null)
   const [dragOver,           setDragOver]           = useState(false)
-  const [shareLoading,       setShareLoading]       = useState(false)
-  const [shareCopied,        setShareCopied]        = useState(false)
+  const [shareLoading,        setShareLoading]        = useState(false)
+  const [shareCopied,         setShareCopied]         = useState(false)
   const [routeLoadingFromUrl, setRouteLoadingFromUrl] = useState(false)
+  const [selectedClosureId,   setSelectedClosureId]   = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const mapRef       = useRef<HTMLDivElement>(null)
+
+  const routeLengthKm = useMemo(() => {
+    if (routePoints.length < 2) return null
+    let total = 0
+    for (let i = 0; i < routePoints.length - 1; i++) {
+      total += haversineMeters(routePoints[i].lat, routePoints[i].lng, routePoints[i + 1].lat, routePoints[i + 1].lng)
+    }
+    return total / 1000
+  }, [routePoints])
 
   // ---------------------------------------------------------------------------
   // On mount: load route from ?route= URL param if present
@@ -227,6 +238,7 @@ export function TourCheckClient() {
     setFileName(null)
     setHits([])
     setFileError(null)
+    setSelectedClosureId(null)
   }
 
   const mapClosures = closures.filter((c) => ACTIVE_STATUSES.has(c.status))
@@ -314,9 +326,19 @@ export function TourCheckClient() {
               className="flex items-center justify-between rounded-xl px-4 py-3"
               style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
             >
-              <span className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                {fileName}
-              </span>
+              <div className="flex flex-col min-w-0">
+                <span className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  {fileName}
+                </span>
+                {routeLengthKm !== null && (
+                  <span className="flex items-center gap-1 text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                    <MapPin className="h-3 w-3 shrink-0" />
+                    {routeLengthKm >= 10
+                      ? `${Math.round(routeLengthKm)} km`
+                      : `${routeLengthKm.toFixed(1)} km`}
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={handleClear}
@@ -382,11 +404,18 @@ export function TourCheckClient() {
         {hits.length > 0 && (
           <div className="flex flex-col gap-2">
             {hits.map(({ closure, distanceM }) => (
-              <a
+              <button
                 key={closure.id}
-                href={`/?closure=${closure.id}`}
-                className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors"
-                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
+                type="button"
+                onClick={() => {
+                  setSelectedClosureId(closure.id)
+                  mapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }}
+                className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors text-left w-full"
+                style={{
+                  background:  selectedClosureId === closure.id ? 'var(--bg-card-hover, #22262f)' : 'var(--bg-card)',
+                  border:      `1px solid ${selectedClosureId === closure.id ? 'var(--accent)' : 'var(--border)'}`,
+                }}
               >
                 <span
                   className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -398,14 +427,14 @@ export function TourCheckClient() {
                 <span className="shrink-0 text-xs" style={{ color: 'var(--text-secondary)' }}>
                   {Math.round(distanceM)} m
                 </span>
-              </a>
+              </button>
             ))}
           </div>
         )}
       </div>
 
       {/* ── Map ───────────────────────────────────────────────────────── */}
-      <div style={{ height: 420 }}>
+      <div ref={mapRef} style={{ height: 420 }}>
         {closuresLoading ? (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'var(--accent)' }} />
@@ -414,7 +443,7 @@ export function TourCheckClient() {
           <TourMap
             routePoints={routePoints}
             closures={mapClosures}
-            selectedClosureId={null}
+            selectedClosureId={selectedClosureId}
           />
         )}
       </div>

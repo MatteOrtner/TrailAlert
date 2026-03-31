@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState, startTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { haversineMeters } from '@/lib/geo'
 import type { Closure, ClosureType, SeverityLevel } from '@/lib/types'
 
 export interface ClosureFilters {
-  types:        ClosureType[]        // empty = all types
-  severities:   SeverityLevel[]      // empty = all severities
-  timeRange:    'all' | '7d' | '30d'
+  types:         ClosureType[]        // empty = all types
+  severities:    SeverityLevel[]      // empty = all severities
+  timeRange:     'all' | '7d' | '30d'
   confirmedOnly: boolean
+  maxDistanceKm: number | null        // null = no distance filter
 }
 
 const ALL_TYPES:      ClosureType[]    = ['forestwork', 'construction', 'damage', 'other']
@@ -19,6 +21,7 @@ export const DEFAULT_FILTERS: ClosureFilters = {
   severities:    ALL_SEVERITIES,
   timeRange:     'all',
   confirmedOnly: false,
+  maxDistanceKm: null,
 }
 
 export function isDefaultFilters(f: ClosureFilters): boolean {
@@ -26,11 +29,12 @@ export function isDefaultFilters(f: ClosureFilters): boolean {
     f.types.length === ALL_TYPES.length &&
     f.severities.length === ALL_SEVERITIES.length &&
     f.timeRange === 'all' &&
-    !f.confirmedOnly
+    !f.confirmedOnly &&
+    f.maxDistanceKm === null
   )
 }
 
-export function useClosures() {
+export function useClosures(userPosition?: { lat: number; lng: number } | null) {
   const [allClosures, setAllClosures] = useState<Closure[]>([])
   const [loading, setLoading]         = useState(true)
   const [error, setError]             = useState<string | null>(null)
@@ -118,8 +122,13 @@ export function useClosures() {
 
     if (filters.confirmedOnly && c.upvotes === 0) return false
 
+    if (filters.maxDistanceKm !== null && userPosition) {
+      const distM = haversineMeters(userPosition.lat, userPosition.lng, c.latitude, c.longitude)
+      if (distM > filters.maxDistanceKm * 1000) return false
+    }
+
     return true
-  }), [allClosures, filters])
+  }), [allClosures, filters, userPosition])
 
   return {
     closures,

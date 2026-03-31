@@ -31,9 +31,16 @@ const TILE_ATTRIBUTION =
 // GPS button — inside MapContainer (needs useMap)
 // ---------------------------------------------------------------------------
 
-function LocationControl({ hidden }: { hidden?: boolean }) {
+interface LocationControlProps {
+  position:        GeolocationCoordinates | null
+  loading:         boolean
+  error:           string | null
+  requestLocation: () => void
+  hidden?:         boolean
+}
+
+function LocationControl({ position, loading, error, requestLocation, hidden }: LocationControlProps) {
   const map = useMap()
-  const { position, loading, error, requestLocation } = useGeolocation()
 
   useEffect(() => {
     if (position) {
@@ -147,7 +154,9 @@ function MapMovementTracker() {
 // ---------------------------------------------------------------------------
 
 export default function Map({ targetClosureId }: { targetClosureId?: string | null }) {
-  const { closures, total, loading, error, filters, setFilters } = useClosures()
+  const { position, loading: geoLoading, error: geoError, requestLocation } = useGeolocation()
+  const userPosition = position ? { lat: position.latitude, lng: position.longitude } : null
+  const { closures, total, loading, error, filters, setFilters } = useClosures(userPosition)
   const { onSuccessRef, isPickingLocation, setAllClosures } = useReportForm()
   const { user }                          = useAuth()
   const { menuOpen }                      = useHeaderMenu()
@@ -185,6 +194,8 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
         setFilters={setFilters}
         count={closures.length}
         total={total}
+        userPosition={userPosition}
+        onRequestLocation={requestLocation}
       />
 
       {/* Map area */}
@@ -236,7 +247,13 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
 
           {!sidebarOpen && <ZoomControl position="bottomright" />}
           <MapMovementTracker />
-          <LocationControl hidden={sidebarOpen} />
+          <LocationControl
+            position={position}
+            loading={geoLoading}
+            error={geoError}
+            requestLocation={requestLocation}
+            hidden={sidebarOpen}
+          />
           <MapResizeHandler trigger={sidebarOpen} />
           <ZoomToNewClosureHandler target={zoomTarget} />
           {isPickingLocation && <MapPositionPicker />}
