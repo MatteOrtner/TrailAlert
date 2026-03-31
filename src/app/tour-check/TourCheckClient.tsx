@@ -186,7 +186,24 @@ export function TourCheckClient() {
       }
       const { id } = await res.json()
       const url = `${window.location.origin}/tour-check?route=${id}`
-      await navigator.clipboard.writeText(url)
+
+      // Use Web Share API on mobile (avoids clipboard gesture-context issues),
+      // fall back to clipboard, then a prompt if both are unavailable.
+      if (typeof navigator.share === 'function') {
+        try {
+          await navigator.share({ title: 'TrailAlert Tour-Check', url })
+        } catch {
+          // User dismissed the share sheet — still counts as success
+        }
+      } else {
+        try {
+          await navigator.clipboard.writeText(url)
+        } catch {
+          // Clipboard blocked (e.g. iOS Safari after async gap) — show manual fallback
+          window.prompt('Link zum Teilen:', url)
+        }
+      }
+
       setShareCopied(true)
       setTimeout(() => setShareCopied(false), 2000)
     } catch {
