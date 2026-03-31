@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import type { Closure, ClosureStatus } from '@/lib/types'
 import { Trash2, CheckCircle2, MapPin, AlertTriangle, ShieldAlert, Image as ImageIcon } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
@@ -11,42 +10,40 @@ export function AdminDashboardClient({ initialClosures }: { initialClosures: Clo
   const [closures, setClosures] = useState<Closure[]>(initialClosures)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [filterStatus, setFilterStatus] = useState<string>('all')
-  const supabase = createClient()
 
-  const activeCount = closures.filter(c => c.status === 'active').length
-  const resolvedCount = closures.filter(c => c.status === 'resolved').length
+  const activeCount        = closures.filter(c => c.status === 'active').length
+  const resolvedCount      = closures.filter(c => c.status === 'resolved').length
   const pendingReviewCount = closures.filter(c => c.status === 'pending_review').length
 
   async function handleDelete(id: string) {
     if (!window.confirm('Sicher, dass du diese Sperre (Meldung) endgültig löschen willst?')) return
     setLoadingId(id)
 
-    const { error } = await supabase
-      .from('closures')
-      .delete()
-      .eq('id', id)
+    const res = await fetch(`/api/admin/closures/${id}`, { method: 'DELETE' })
 
-    if (!error) {
+    if (res.ok) {
       setClosures(prev => prev.filter(c => c.id !== id))
     } else {
-      alert(`Fehler beim Löschen: ${error.message}`)
+      const { error } = await res.json().catch(() => ({ error: 'Unbekannter Fehler.' }))
+      alert(`Fehler beim Löschen: ${error}`)
     }
     setLoadingId(null)
   }
 
-  async function handleToggleStatus(id: string, currentStatus: string) {
-    const newStatus = currentStatus === 'active' ? 'resolved' : 'active'
+  async function handleSetStatus(id: string, newStatus: ClosureStatus) {
     setLoadingId(id)
 
-    const { error } = await supabase
-      .from('closures')
-      .update({ status: newStatus })
-      .eq('id', id)
+    const res = await fetch(`/api/admin/closures/${id}`, {
+      method:  'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body:    JSON.stringify({ status: newStatus }),
+    })
 
-    if (!error) {
-      setClosures(prev => prev.map(c => c.id === id ? { ...c, status: newStatus as ClosureStatus } : c))
+    if (res.ok) {
+      setClosures(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c))
     } else {
-      alert(`Fehler beim Status-Update: ${error.message}`)
+      const { error } = await res.json().catch(() => ({ error: 'Unbekannter Fehler.' }))
+      alert(`Fehler beim Status-Update: ${error}`)
     }
     setLoadingId(null)
   }
@@ -154,14 +151,14 @@ export function AdminDashboardClient({ initialClosures }: { initialClosures: Clo
               {closure.status === 'pending_review' ? (
                 <>
                   <button
-                    onClick={() => handleToggleStatus(closure.id, 'resolved')}
+                    onClick={() => handleSetStatus(closure.id, 'resolved')}
                     disabled={loadingId === closure.id}
                     className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--bg-dark)] px-4 py-2 text-sm font-semibold text-text-primary transition hover:bg-white/5 disabled:opacity-50"
                   >
                     <CheckCircle2 className="h-4 w-4 text-[var(--success)]" /> Auflösen
                   </button>
                   <button
-                    onClick={() => handleToggleStatus(closure.id, 'unconfirmed')}
+                    onClick={() => handleSetStatus(closure.id, 'active')}
                     disabled={loadingId === closure.id}
                     className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--bg-dark)] px-4 py-2 text-sm font-semibold text-text-primary transition hover:bg-white/5 disabled:opacity-50"
                   >
@@ -170,7 +167,7 @@ export function AdminDashboardClient({ initialClosures }: { initialClosures: Clo
                 </>
               ) : (
                 <button
-                  onClick={() => handleToggleStatus(closure.id, closure.status)}
+                  onClick={() => handleSetStatus(closure.id, closure.status === 'active' ? 'resolved' : 'active')}
                   disabled={loadingId === closure.id}
                   className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--bg-dark)] px-4 py-2 text-sm font-semibold text-text-primary transition hover:bg-white/5 disabled:opacity-50"
                 >
