@@ -4,7 +4,13 @@ import { useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, Polyline, useMap } from 'react-leaflet'
 import { ClosureMarker } from './ClosureMarker'
 import type { LatLng } from '@/lib/geo'
-import type { Closure } from '@/lib/types'
+import type { Closure, SeverityLevel } from '@/lib/types'
+
+const SEVERITY_COLORS: Record<SeverityLevel, string> = {
+  full_closure: '#ef4444',
+  partial:      '#f59e0b',
+  warning:      '#eab308',
+}
 
 const TILE_URL         = 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'
 const TILE_ATTRIBUTION = 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
@@ -98,6 +104,18 @@ export function TourMap({ routePoints, closures, selectedClosureId }: TourMapPro
           autoOpen={c.id === selectedClosureId}
         />
       ))}
+
+      {closures.map((c) =>
+        c.path_points && c.path_points.length >= 2 ? (
+          <Polyline
+            key={`path-${c.id}`}
+            positions={c.path_points.map((p) => [p.lat, p.lng] as [number, number])}
+            color={SEVERITY_COLORS[c.severity]}
+            weight={5}
+            opacity={0.85}
+          />
+        ) : null
+      )}
 
       <FitBoundsController positions={positions} />
       <FlyToController closureId={selectedClosureId} closures={closures} />

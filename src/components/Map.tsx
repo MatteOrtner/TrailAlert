@@ -3,7 +3,7 @@
 import 'leaflet/dist/leaflet.css'
 
 import { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, Circle, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, Circle, Polyline, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
 import { Locate, Loader2 } from 'lucide-react'
 import { useClosures, isDefaultFilters, DEFAULT_FILTERS } from '@/hooks/useClosures'
 import { useGeolocation } from '@/hooks/useGeolocation'
@@ -12,6 +12,7 @@ import { useWatchAreaPanel } from '@/contexts/WatchAreaContext'
 import { useWatchAreas } from '@/hooks/useWatchAreas'
 import { useAuth } from '@/contexts/AuthContext'
 import { useHeaderMenu } from '@/contexts/HeaderMenuContext'
+import type { SeverityLevel } from '@/lib/types'
 import { ClosureMarker } from './ClosureMarker'
 import { FilterSidebar, FilterToggleButton } from './FilterSidebar'
 import { ReportForm } from './ReportForm'
@@ -19,6 +20,12 @@ import { ReportForm } from './ReportForm'
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
+
+const SEVERITY_COLORS: Record<SeverityLevel, string> = {
+  full_closure: '#ef4444',
+  partial:      '#f59e0b',
+  warning:      '#eab308',
+}
 
 // OpenTopoMap — topographic tiles with elevation contours, forest roads,
 // hiking & MTB trails. Subdomains a/b/c only (d does not exist).
@@ -157,7 +164,7 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
   const { position, loading: geoLoading, error: geoError, requestLocation } = useGeolocation()
   const userPosition = position ? { lat: position.latitude, lng: position.longitude } : null
   const { closures, total, loading, error, filters, setFilters } = useClosures(userPosition)
-  const { onSuccessRef, isPickingLocation, setAllClosures } = useReportForm()
+  const { onSuccessRef, isPickingLocation, setAllClosures, draftPath, isDrawingPath, hasDraftPosition } = useReportForm()
   const { user }                          = useAuth()
   const { menuOpen }                      = useHeaderMenu()
 
@@ -228,6 +235,29 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
             />
           ))}
 
+          {/* Closure path polylines */}
+          {closures.map((closure) =>
+            closure.path_points && closure.path_points.length >= 2 ? (
+              <Polyline
+                key={`path-${closure.id}`}
+                positions={closure.path_points.map((p) => [p.lat, p.lng] as [number, number])}
+                color={SEVERITY_COLORS[closure.severity]}
+                weight={5}
+                opacity={0.85}
+              />
+            ) : null
+          )}
+
+          {/* Live draft path while reporting */}
+          {draftPath.length >= 2 && (
+            <Polyline
+              positions={draftPath.map((p) => [p.lat, p.lng] as [number, number])}
+              color="#ef4444"
+              weight={5}
+              opacity={0.9}
+            />
+          )}
+
           {/* Watch area circles — visible for logged-in users */}
           {user && areas.map((area) => (
             <Circle
@@ -259,8 +289,9 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
           {isPickingLocation && <MapPositionPicker />}
         </MapContainer>
 
-        {/* Crosshair overlay shown while the user picks a location for a new report */}
-        {isPickingLocation && (
+        {/* Crosshair overlay: visible in State A (no position yet) and State C (drawing).
+            Hidden in State B (position placed, user deciding whether to draw path). */}
+        {isPickingLocation && (!hasDraftPosition || isDrawingPath) && (
           <div
             className="pointer-events-none absolute inset-0 z-[999] flex items-center justify-center"
             style={{ paddingBottom: 100 }}
