@@ -126,9 +126,7 @@ Falls du ohne CLI arbeitest, öffne den **SQL Editor** im Supabase Dashboard (Da
 002_notify_webhook.sql
 003_vote_count_trigger.sql
 004_add_pending_review_status.sql
-004_votes_delete_update_policy.sql
 005_auto_resolve_vote_trigger.sql
-005_reset_data.sql
 006_fix_vote_user_constraint.sql
 007_pg_net_webhook.sql
 008_closure_comments.sql
