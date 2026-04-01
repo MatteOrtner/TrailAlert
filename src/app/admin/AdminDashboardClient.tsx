@@ -142,7 +142,9 @@ export function AdminDashboardClient({ initialClosures }: { initialClosures: Clo
                 </span>
 
                 {closure.description && (
-                  <p className="mt-3 text-sm italic text-text-secondary line-clamp-2">"{closure.description}"</p>
+                  <p className="mt-3 text-sm italic text-text-secondary line-clamp-2">
+                    &ldquo;{closure.description}&rdquo;
+                  </p>
                 )}
               </div>
             </div>

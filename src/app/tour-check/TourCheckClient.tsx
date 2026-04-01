@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { Upload, X, AlertTriangle, CheckCircle2, Loader2, ArrowLeft, Share2, Check } from 'lucide-react'
 import { useClosures } from '@/hooks/useClosures'
@@ -216,14 +217,14 @@ export function TourCheckClient() {
 
         {/* Header text */}
         <div>
-          <a
+          <Link
             href="/"
             className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
             style={{ color: 'var(--text-secondary)' }}
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Zurück zur Karte
-          </a>
+          </Link>
           <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
             Tour prüfen
           </h1>
@@ -359,7 +360,7 @@ export function TourCheckClient() {
         {hits.length > 0 && (
           <div className="flex flex-col gap-2">
             {hits.map(({ closure, distanceM }) => (
-              <a
+              <Link
                 key={closure.id}
                 href={`/?closure=${closure.id}`}
                 className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors"
@@ -375,7 +376,7 @@ export function TourCheckClient() {
                 <span className="shrink-0 text-xs" style={{ color: 'var(--text-secondary)' }}>
                   {Math.round(distanceM)} m
                 </span>
-              </a>
+              </Link>
             ))}
           </div>
         )}

@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+import Image from 'next/image'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWatchAreaPanel } from '@/contexts/WatchAreaContext'
 import { createClient } from '@/lib/supabase/client'
@@ -54,13 +56,13 @@ export default function EinstellungenPage() {
           <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>
             Anmeldung erforderlich
           </p>
-          <a
+          <Link
             href="/"
             className="rounded-lg px-5 py-2.5 text-sm font-semibold"
             style={{ background: 'var(--accent)', color: 'var(--bg-dark)' }}
           >
             Zur Karte
-          </a>
+          </Link>
         </div>
       )}
 
@@ -78,9 +80,12 @@ export default function EinstellungenPage() {
             </h2>
             <div className="flex items-center gap-4">
               {avatarUrl ? (
-                <img
+                <Image
                   src={avatarUrl}
                   alt={displayName}
+                  width={56}
+                  height={56}
+                  unoptimized
                   className="h-14 w-14 rounded-full object-cover"
                   referrerPolicy="no-referrer"
                 />
@@ -142,7 +147,7 @@ export default function EinstellungenPage() {
             <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
               Meine Aktivität
             </h2>
-            <a
+            <Link
               href="/meine-meldungen"
               className="flex items-center justify-between rounded-lg px-4 py-3 transition-colors"
               style={{ background: 'var(--bg-dark)', border: '1px solid var(--border)' }}
@@ -154,7 +159,7 @@ export default function EinstellungenPage() {
                 </span>
               </div>
               <span className="text-xs" style={{ color: 'var(--accent)' }}>Öffnen →</span>
-            </a>
+            </Link>
           </section>
 
           {/* Sign out */}

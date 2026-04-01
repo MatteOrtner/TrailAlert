@@ -28,7 +28,7 @@ export function getOfflineQueue(): QueuedReport[] {
   if (!data) return []
   try {
     return JSON.parse(data) as QueuedReport[]
-  } catch (e) {
+  } catch {
     return []
   }
 }

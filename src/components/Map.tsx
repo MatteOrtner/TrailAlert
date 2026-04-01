@@ -8,7 +8,6 @@ import { Locate, Loader2 } from 'lucide-react'
 import { useClosures, isDefaultFilters, DEFAULT_FILTERS } from '@/hooks/useClosures'
 import { useGeolocation } from '@/hooks/useGeolocation'
 import { useReportForm } from '@/contexts/ReportFormContext'
-import { useWatchAreaPanel } from '@/contexts/WatchAreaContext'
 import { useWatchAreas } from '@/hooks/useWatchAreas'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWelcome } from '@/hooks/useWelcome'
@@ -155,22 +154,33 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
     setAllClosures(closures)
   }, [closures]) // eslint-disable-line react-hooks/exhaustive-deps
   const { areas }                         = useWatchAreas()
-  const { isOpen: watchPanelOpen }        = useWatchAreaPanel()
   const [sidebarOpen, setSidebarOpen]     = useState(false)
   const [zoomTarget, setZoomTarget]       = useState<[number, number] | null>(null)
   const [openPopupFor, setOpenPopupFor]   = useState<string | null>(null)
   const isDirty = !isDefaultFilters(filters)
 
-  // Register zoom callback in context so ReportForm can trigger it
-  onSuccessRef.current = (lat, lng) => setZoomTarget([lat, lng])
+  // Register zoom callback in context so ReportForm can trigger it.
+  useEffect(() => {
+    onSuccessRef.current = (lat, lng) => setZoomTarget([lat, lng])
+    return () => {
+      onSuccessRef.current = null
+    }
+  }, [onSuccessRef])
 
   // Pan to and open popup for a linked closure (e.g. from email notification)
   useEffect(() => {
     if (!targetClosureId || loading) return
     const target = closures.find((c) => c.id === targetClosureId)
     if (!target) return
-    setZoomTarget([target.latitude, target.longitude])
-    setOpenPopupFor(target.id)
+
+    const timeoutId = window.setTimeout(() => {
+      setZoomTarget([target.latitude, target.longitude])
+      setOpenPopupFor(target.id)
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
   }, [targetClosureId, closures, loading])
 
   return (

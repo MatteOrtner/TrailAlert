@@ -133,9 +133,14 @@ function buildEmail(closure: Closure, areaName: string, appUrl: string): string 
 
 serve(async (req) => {
   // Validate shared secret to prevent unauthorized calls
-  const secret   = Deno.env.get('WEBHOOK_SECRET')
+  const secret = Deno.env.get('WEBHOOK_SECRET')
+  if (!secret) {
+    console.error('Missing WEBHOOK_SECRET environment variable')
+    return new Response('Server misconfigured', { status: 500 })
+  }
+
   const authHeader = req.headers.get('x-webhook-secret')
-  if (secret && authHeader !== secret) {
+  if (authHeader !== secret) {
     return new Response('Unauthorized', { status: 401 })
   }
 
@@ -153,11 +158,15 @@ serve(async (req) => {
     return new Response('Not active — skipped', { status: 200 })
   }
 
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+    return new Response('Server misconfigured', { status: 500 })
+  }
+
   // --- Supabase admin client ---
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  )
+  const supabase = createClient(supabaseUrl, serviceRoleKey)
 
   // --- Find matching watch areas ---
   const { data: allAreas, error: areasErr } = await supabase
@@ -193,7 +202,12 @@ serve(async (req) => {
   }
 
   // --- Send emails via Resend ---
-  const resendKey = Deno.env.get('RESEND_API_KEY')!
+  const resendKey = Deno.env.get('RESEND_API_KEY')
+  if (!resendKey) {
+    console.error('Missing RESEND_API_KEY')
+    return new Response('Server misconfigured', { status: 500 })
+  }
+
   const appUrl    = Deno.env.get('APP_URL') ?? 'https://trailalert.vercel.app'
   const fromAddr  = Deno.env.get('EMAIL_FROM') ?? 'TrailAlert <onboarding@resend.dev>'
 

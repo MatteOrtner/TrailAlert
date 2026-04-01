@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import { LogIn, LogOut, Map, Bell, Settings, ChevronDown, Loader2, ShieldAlert } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -24,9 +25,12 @@ function Avatar({ user }: { user: NonNullable<ReturnType<typeof useAuth>['user']
 
   if (avatarUrl) {
     return (
-      <img
+      <Image
         src={avatarUrl}
         alt={initial}
+        width={28}
+        height={28}
+        unoptimized
         className="h-7 w-7 rounded-full object-cover"
         referrerPolicy="no-referrer"
       />
@@ -108,6 +112,7 @@ export function AuthButton() {
     user.user_metadata?.name ??
     user.email?.split('@')[0] ??
     'Account'
+  const isAdmin = !!user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
 
   return (
     <div ref={dropdownRef} className="relative">
@@ -176,7 +181,7 @@ export function AuthButton() {
           ))}
 
           {/* Admin link */}
-          {user.email && ADMIN_EMAILS.includes(user.email) && (
+          {isAdmin && (
             <a
               href="/admin"
               onClick={() => setDropdown(false)}
@@ -249,6 +254,7 @@ export function AuthButtonMobile({ onClose }: { onClose: () => void }) {
     user.user_metadata?.name ??
     user.email?.split('@')[0] ??
     'Account'
+  const isAdmin = !!user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
 
   return (
     <div className="flex flex-col gap-1 pt-3 mt-1" style={{ borderTop: '1px solid var(--border)' }}>
@@ -291,7 +297,7 @@ export function AuthButtonMobile({ onClose }: { onClose: () => void }) {
       ))}
 
       {/* Admin Link Mobile */}
-      {user.email && ADMIN_EMAILS.includes(user.email) && (
+      {isAdmin && (
         <a
           href="/admin"
           onClick={onClose}

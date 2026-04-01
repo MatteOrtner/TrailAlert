@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Popup } from 'react-leaflet'
 import { formatDistanceToNow, format } from 'date-fns'
@@ -98,7 +99,7 @@ export function ClosurePopup({ closure }: Props) {
           text: `Schau dir das mal an: ${closure.title}`,
           url,
         })
-      } catch (err) {
+      } catch {
         // Ignored
       }
     } else {
@@ -108,72 +109,56 @@ export function ClosurePopup({ closure }: Props) {
     }
   }
 
-  // Optimistic deltas: reset to 0 once realtime updates the prop counts
-  const [delta, setDelta]           = useState<{ confirm: number; deny: number }>({ confirm: 0, deny: 0 })
-
-  // Track previous prop counts to detect realtime updates
-  const prevUpvotes   = useRef(closure.upvotes)
-  const prevDownvotes = useRef(closure.downvotes)
-
-  useEffect(() => {
-    if (closure.upvotes !== prevUpvotes.current || closure.downvotes !== prevDownvotes.current) {
-      prevUpvotes.current   = closure.upvotes
-      prevDownvotes.current = closure.downvotes
-      setDelta({ confirm: 0, deny: 0 })
-    }
-  }, [closure.upvotes, closure.downvotes])
-
   const severity = SEVERITY_LABELS[closure.severity]
 
-  // Display counts with optimistic delta applied
-  const displayUpvotes   = closure.upvotes + delta.confirm
-  const displayDownvotes = closure.downvotes + delta.deny
+  const displayUpvotes   = closure.upvotes
+  const displayDownvotes = closure.downvotes
 
   async function handleVote(voteType: VoteType) {
     if (submitting || voted === voteType) return
     setSubmitting(true)
     setVoteError(null)
 
-    const supabase    = createClient()
-    const fingerprint = getFingerprint()
+    const supabase = createClient()
 
     // --- Change vote (already voted, clicking the other button) ---
     if (voted) {
+      if (!user) {
+        setVoteError('Du hast bereits abgestimmt. Melde dich an, um deine Stimme zu ändern.')
+        setSubmitting(false)
+        return
+      }
+
       const { error } = await supabase
         .from('votes')
         .update({ vote_type: voteType })
-        .match({ closure_id: closure.id, anon_fingerprint: fingerprint })
+        .eq('closure_id', closure.id)
+        .eq('user_id', user.id)
+
       if (error) {
         setVoteError('Abstimmung fehlgeschlagen.')
       } else {
-        if (voteType === 'confirm') {
-          setDelta(d => ({ confirm: d.confirm + 1, deny: d.deny - 1 }))
-        } else {
-          setDelta(d => ({ confirm: d.confirm - 1, deny: d.deny + 1 }))
-        }
         setVoted(voteType)
         saveVote(closure.id, voteType)
       }
 
     // --- New vote ---
     } else {
-      const { error } = await supabase.from('votes').insert({
-        closure_id:       closure.id,
-        vote_type:        voteType,
-        anon_fingerprint: fingerprint,
-      })
+      const payload = user
+        ? { closure_id: closure.id, vote_type: voteType, user_id: user.id }
+        : { closure_id: closure.id, vote_type: voteType, anon_fingerprint: getFingerprint() }
+
+      const { error } = await supabase.from('votes').insert(payload)
+
       if (!error) {
-        if (voteType === 'confirm') {
-          setDelta(d => ({ ...d, confirm: d.confirm + 1 }))
-        } else {
-          setDelta(d => ({ ...d, deny: d.deny + 1 }))
-        }
         setVoted(voteType)
         saveVote(closure.id, voteType)
       } else if (error.code === '23505') {
-        // Vote already exists in DB — sync local state without changing delta
-        setVoted(voteType)
-        saveVote(closure.id, voteType)
+        setVoteError(
+          user
+            ? 'Du hast bereits abgestimmt.'
+            : 'Du hast bereits abgestimmt. Melde dich an, um deine Stimme zu ändern.'
+        )
       } else {
         setVoteError('Abstimmung fehlgeschlagen.')
       }
@@ -213,9 +198,11 @@ export function ClosurePopup({ closure }: Props) {
               className="w-full overflow-hidden rounded-md"
               style={{ maxHeight: 120 }}
             >
-              <img
+              <Image
                 src={closure.photo_url}
                 alt="Foto der Sperre"
+                width={640}
+                height={360}
                 className="w-full object-cover transition-opacity hover:opacity-90"
                 style={{ maxHeight: 120 }}
               />
@@ -233,9 +220,12 @@ export function ClosurePopup({ closure }: Props) {
                 >
                   <X className="h-5 w-5" />
                 </button>
-                <img
+                <Image
                   src={closure.photo_url!}
                   alt="Foto der Sperre"
+                  width={1600}
+                  height={1200}
+                  sizes="(max-width: 768px) 100vw, 80vw"
                   className="max-h-full max-w-full rounded-lg object-contain"
                   onClick={(e) => e.stopPropagation()}
                 />

@@ -33,7 +33,15 @@ export function useWatchAreas() {
     setLoading(false)
   }, [user])
 
-  useEffect(() => { fetchAreas() }, [fetchAreas])
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void fetchAreas()
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [fetchAreas])
 
   async function addArea(input: AddWatchAreaInput): Promise<WatchArea | null> {
     if (!user) return null
