@@ -78,24 +78,6 @@ export function Header() {
           >
             Tour prüfen
           </Link>
-          <Link
-            href="/datenschutz"
-            className="rounded-lg px-2 py-2 text-xs font-medium transition-colors"
-            style={{ color: 'var(--text-secondary)' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
-          >
-            Datenschutz
-          </Link>
-          <Link
-            href="/impressum"
-            className="rounded-lg px-2 py-2 text-xs font-medium transition-colors"
-            style={{ color: 'var(--text-secondary)' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
-          >
-            Impressum
-          </Link>
           <button
             type="button"
             onClick={handleReport}
@@ -144,24 +126,6 @@ export function Header() {
             style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
           >
             Tour prüfen
-          </Link>
-
-          <Link
-            href="/datenschutz"
-            onClick={() => setMenuOpen(false)}
-            className="flex items-center justify-center rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors"
-            style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-          >
-            Datenschutz
-          </Link>
-
-          <Link
-            href="/impressum"
-            onClick={() => setMenuOpen(false)}
-            className="flex items-center justify-center rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors"
-            style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-          >
-            Impressum
           </Link>
 
           <AuthButtonMobile onClose={() => setMenuOpen(false)} />

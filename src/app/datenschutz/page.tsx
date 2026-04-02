@@ -1,10 +1,16 @@
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 
 const LEGAL_NAME = process.env.NEXT_PUBLIC_LEGAL_OWNER ?? 'Bitte Namen ergänzen'
 const LEGAL_ADDRESS = process.env.NEXT_PUBLIC_LEGAL_ADDRESS ?? 'Bitte Adresse ergänzen'
 const LEGAL_EMAIL = process.env.NEXT_PUBLIC_LEGAL_EMAIL ?? 'Bitte E-Mail ergänzen'
+const LEGAL_PAGES_ENABLED = process.env.NEXT_PUBLIC_ENABLE_LEGAL_PAGES === 'true'
 
 export default function DatenschutzPage() {
+  if (!LEGAL_PAGES_ENABLED) {
+    notFound()
+  }
+
   return (
     <div className="mx-auto max-w-3xl px-4 pb-20 pt-24 sm:px-6">
       <h1 className="text-2xl font-bold text-text-primary">Datenschutzerklärung</h1>
