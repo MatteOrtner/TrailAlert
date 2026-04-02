@@ -285,6 +285,7 @@ trailalert/
    NEXT_PUBLIC_SUPABASE_ANON_KEY <anon-key>
    NEXT_PUBLIC_APP_URL           https://trailalert.vercel.app
    ADMIN_EMAILS                  admin1@example.com,admin2@example.com
+   NEXT_PUBLIC_ADMIN_EMAILS      admin1@example.com,admin2@example.com
    ```
 4. **Deploy** — Vercel erkennt Next.js automatisch
 
