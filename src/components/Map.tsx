@@ -3,7 +3,7 @@
 import 'leaflet/dist/leaflet.css'
 
 import { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, Circle, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, Circle, Polyline, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
 import { Locate, Loader2 } from 'lucide-react'
 import { useClosures, isDefaultFilters, DEFAULT_FILTERS } from '@/hooks/useClosures'
 import { useGeolocation } from '@/hooks/useGeolocation'
@@ -11,6 +11,7 @@ import { useReportForm } from '@/contexts/ReportFormContext'
 import { useWatchAreas } from '@/hooks/useWatchAreas'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWelcome } from '@/hooks/useWelcome'
+import type { Closure, SeverityLevel } from '@/lib/types'
 import { ClosureMarker } from './ClosureMarker'
 import { FilterSidebar, FilterToggleButton } from './FilterSidebar'
 import { ReportForm } from './ReportForm'
@@ -26,6 +27,37 @@ const TILE_URL =
   'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'
 const TILE_ATTRIBUTION =
   'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+
+const SEVERITY_COLORS: Record<SeverityLevel, string> = {
+  full_closure: '#ef4444',
+  partial: '#f59e0b',
+  warning: '#eab308',
+}
+
+function getClosureRoutePositions(closure: Closure): [number, number][] | null {
+  const coords = closure.route_path?.coordinates
+  if (Array.isArray(coords) && coords.length >= 2) {
+    const mapped = coords
+      .filter((c): c is [number, number] => Array.isArray(c) && c.length === 2)
+      .map(([lng, lat]) => [lat, lng] as [number, number])
+
+    if (mapped.length >= 2) return mapped
+  }
+
+  if (
+    closure.route_start_lat != null &&
+    closure.route_start_lng != null &&
+    closure.route_end_lat != null &&
+    closure.route_end_lng != null
+  ) {
+    return [
+      [closure.route_start_lat, closure.route_start_lng],
+      [closure.route_end_lat, closure.route_end_lng],
+    ]
+  }
+
+  return null
+}
 
 // ---------------------------------------------------------------------------
 // GPS button — inside MapContainer (needs useMap)
@@ -217,6 +249,32 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
             keepBuffer={2}
             updateWhenZooming={false}
           />
+
+          {closures.map((closure) => {
+            const positions = getClosureRoutePositions(closure)
+            if (!positions) return null
+
+            const midpoint = positions[Math.floor(positions.length / 2)] ?? positions[0]
+
+            return (
+              <Polyline
+                key={`route-${closure.id}`}
+                positions={positions}
+                pathOptions={{
+                  color: SEVERITY_COLORS[closure.severity],
+                  weight: 6,
+                  opacity: 0.9,
+                  lineCap: 'round',
+                }}
+                eventHandlers={{
+                  click: () => {
+                    setOpenPopupFor(closure.id)
+                    setZoomTarget(midpoint)
+                  },
+                }}
+              />
+            )
+          })}
 
           {closures.map((closure) => (
             <ClosureMarker

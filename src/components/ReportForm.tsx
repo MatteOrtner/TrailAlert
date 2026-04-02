@@ -13,6 +13,7 @@ import { useGeolocation } from '@/hooks/useGeolocation'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Closure, ClosureType, SeverityLevel } from '@/lib/types'
 import { haversineMeters } from '@/lib/geo'
+import { buildStraightLinePath, fetchRoadRoutePath } from '@/lib/routing'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -106,7 +107,12 @@ interface FormState {
   severity:    SeverityLevel
   description: string
   expectedEnd: string
+  routeEnabled: boolean
+  routeStart: { lat: number; lng: number } | null
+  routeEnd: { lat: number; lng: number } | null
 }
+
+type PickingTarget = 'main' | 'route_start' | 'route_end'
 
 const INITIAL_FORM: FormState = {
   position:    null,
@@ -115,6 +121,9 @@ const INITIAL_FORM: FormState = {
   severity:    'full_closure',
   description: '',
   expectedEnd: '',
+  routeEnabled: false,
+  routeStart: null,
+  routeEnd: null,
 }
 
 export function ReportForm() {
@@ -137,25 +146,41 @@ export function ReportForm() {
   const [submitError,   setSubmitError]   = useState<string | null>(null)
   const [dragOver, setDragOver]         = useState(false)
   const [nearbyClosures, setNearbyClosures] = useState<{ closure: Closure; distanceM: number }[]>([])
+  const [routeError, setRouteError]     = useState<string | null>(null)
+  const [pickingTarget, setPickingTarget] = useState<PickingTarget | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const touchStartY  = useRef(0)
   const router       = useRouter()
 
-  // Register position-picked callback so Map.tsx can deliver tapped lat/lng
+  // Register position-picked callback so Map.tsx can deliver tapped lat/lng.
+  // We reuse the same map interaction for main position, route start and route end.
   onPositionPickedRef.current = (lat, lng) => {
-    setForm((f) => ({ ...f, position: { lat, lng } }))
-    setErrors((e) => ({ ...e, position: undefined }))
-    setStep(1)
+    if (pickingTarget === 'route_start') {
+      setForm((f) => ({ ...f, routeEnabled: true, routeStart: { lat, lng } }))
+      setRouteError(null)
+    } else if (pickingTarget === 'route_end') {
+      setForm((f) => ({ ...f, routeEnabled: true, routeEnd: { lat, lng } }))
+      setRouteError(null)
+    } else {
+      setForm((f) => ({ ...f, position: { lat, lng } }))
+      setErrors((e) => ({ ...e, position: undefined }))
+      setStep(1)
+    }
+
+    setIsPickingLocation(false)
+    setPickingTarget(null)
   }
 
-  // Enter picking mode whenever we're on step 0 and the form is open
+  // Start with main position picking on open.
   useEffect(() => {
-    if (isOpen && step === 0) {
-      setIsPickingLocation(true)
-    } else {
-      setIsPickingLocation(false)
+    if (isOpen && step === 0 && pickingTarget === null) {
+      setPickingTarget('main')
     }
-  }, [isOpen, step, setIsPickingLocation])
+  }, [isOpen, step, pickingTarget])
+
+  useEffect(() => {
+    setIsPickingLocation(isOpen && pickingTarget !== null)
+  }, [isOpen, pickingTarget, setIsPickingLocation])
 
   function handleClose() {
     close()
@@ -168,6 +193,8 @@ export function ReportForm() {
       setPhotoFile(null)
       setPhotoPreview(null)
       setPhotoError(null)
+      setRouteError(null)
+      setPickingTarget(null)
     }, 300)
   }
 
@@ -183,15 +210,57 @@ export function ReportForm() {
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }))
   }
 
-  // --- GPS: when location arrives, set position and advance to step 1 ---
-  useEffect(() => {
-    if (geo.position && isOpen && step === 0) {
-      setForm((f) => ({ ...f, position: { lat: geo.position!.latitude, lng: geo.position!.longitude } }))
+  function openRoutePointPicker(target: 'route_start' | 'route_end') {
+    setForm((f) => ({ ...f, routeEnabled: true }))
+    setRouteError(null)
+    setPickingTarget(target)
+  }
+
+  function cancelPickingMode() {
+    if (pickingTarget && pickingTarget !== 'main') {
+      setPickingTarget(null)
       setIsPickingLocation(false)
+      return
+    }
+    handleClose()
+  }
+
+  function formatCoord(value: number) {
+    return value.toFixed(5)
+  }
+
+  const routeStraightDistanceM = form.routeStart && form.routeEnd
+    ? Math.round(
+      haversineMeters(
+        form.routeStart.lat,
+        form.routeStart.lng,
+        form.routeEnd.lat,
+        form.routeEnd.lng,
+      ),
+    )
+    : null
+
+  // --- GPS: apply to whichever point the user is currently picking ---
+  useEffect(() => {
+    if (!geo.position || !isOpen || !pickingTarget) return
+
+    const picked = { lat: geo.position.latitude, lng: geo.position.longitude }
+
+    if (pickingTarget === 'route_start') {
+      setForm((f) => ({ ...f, routeEnabled: true, routeStart: picked }))
+      setRouteError(null)
+    } else if (pickingTarget === 'route_end') {
+      setForm((f) => ({ ...f, routeEnabled: true, routeEnd: picked }))
+      setRouteError(null)
+    } else {
+      setForm((f) => ({ ...f, position: picked }))
+      setErrors((e) => ({ ...e, position: undefined }))
       setStep(1)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geo.position])
+
+    setIsPickingLocation(false)
+    setPickingTarget(null)
+  }, [geo.position, isOpen, pickingTarget, setIsPickingLocation])
 
   // Compute nearby open closures when the user picks a location
   useEffect(() => {
@@ -246,15 +315,51 @@ export function ReportForm() {
     } else if (form.title.trim().length < 5) {
       errs.title = 'Titel muss mindestens 5 Zeichen haben.'
     }
+
+    if (form.routeEnabled && (!form.routeStart || !form.routeEnd)) {
+      setRouteError('Bitte Start und Ende für den Sperr-Verlauf setzen.')
+    } else {
+      setRouteError(null)
+    }
+
     setErrors(errs)
-    return Object.keys(errs).length === 0
+    return Object.keys(errs).length === 0 && (!form.routeEnabled || !!(form.routeStart && form.routeEnd))
   }
 
   // --- Submit ---
   async function handleSubmit() {
     if (submitting || !form.position) return
+    if (form.routeEnabled && (!form.routeStart || !form.routeEnd)) {
+      setRouteError('Bitte Start und Ende für den Sperr-Verlauf setzen.')
+      setStep(1)
+      return
+    }
+
     setSubmitting(true)
     setSubmitError(null)
+
+    const routeStart = form.routeEnabled ? form.routeStart : null
+    const routeEnd = form.routeEnabled ? form.routeEnd : null
+
+    let routePath: Closure['route_path'] = null
+    let routeDistanceM: number | null = null
+
+    if (routeStart && routeEnd) {
+      if (navigator.onLine) {
+        const routeResult = await fetchRoadRoutePath(routeStart, routeEnd)
+        if (routeResult) {
+          routePath = routeResult.path
+          routeDistanceM = routeResult.distanceM
+        }
+      }
+
+      if (!routePath) {
+        routePath = buildStraightLinePath(routeStart, routeEnd)
+        routeDistanceM = Math.round(
+          haversineMeters(routeStart.lat, routeStart.lng, routeEnd.lat, routeEnd.lng),
+        )
+      }
+    }
 
     // CHECK FOR OFFLINE
     if (!navigator.onLine) {
@@ -275,6 +380,12 @@ export function ReportForm() {
           severity:     form.severity,
           expected_end: form.expectedEnd || null,
           reported_by:  user?.id ?? null,
+          route_start_lat: routeStart?.lat ?? null,
+          route_start_lng: routeStart?.lng ?? null,
+          route_end_lat: routeEnd?.lat ?? null,
+          route_end_lng: routeEnd?.lng ?? null,
+          route_path: routePath,
+          route_distance_m: routeDistanceM,
           photoDataUrl,
           photoType:    photoFile?.type ?? null,
           createdAt:    Date.now()
@@ -324,6 +435,12 @@ export function ReportForm() {
         expected_end: form.expectedEnd || null,
         photo_url:    photoUrl,
         reported_by:  user?.id ?? null,
+        route_start_lat: routeStart?.lat ?? null,
+        route_start_lng: routeStart?.lng ?? null,
+        route_end_lat: routeEnd?.lat ?? null,
+        route_end_lng: routeEnd?.lng ?? null,
+        route_path: routePath,
+        route_distance_m: routeDistanceM,
         status:       'active',
       })
       .select()
@@ -363,6 +480,27 @@ export function ReportForm() {
     outline:      'none',
   }
 
+  const pickingTitle =
+    pickingTarget === 'route_start'
+      ? 'Sperr-Verlauf — Startpunkt'
+      : pickingTarget === 'route_end'
+        ? 'Sperr-Verlauf — Endpunkt'
+        : 'Sperre melden — Schritt 1/3'
+
+  const pickingHint =
+    pickingTarget === 'route_start'
+      ? 'Tippe auf die Karte oder nutze GPS für den Startpunkt'
+      : pickingTarget === 'route_end'
+        ? 'Tippe auf die Karte oder nutze GPS für den Endpunkt'
+        : 'Tippe auf die Karte oder nutze GPS'
+
+  const pickingGpsLabel =
+    pickingTarget === 'route_start'
+      ? 'GPS als Startpunkt verwenden'
+      : pickingTarget === 'route_end'
+        ? 'GPS als Endpunkt verwenden'
+        : 'Meinen Standort verwenden'
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -382,15 +520,15 @@ export function ReportForm() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                Sperre melden — Schritt 1/3
+                {pickingTitle}
               </p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                Tippe auf die Karte oder nutze GPS
+                {pickingHint}
               </p>
             </div>
             <button
               type="button"
-              onClick={handleClose}
+              onClick={cancelPickingMode}
               className="flex h-9 w-9 items-center justify-center rounded-lg"
               style={{ color: 'var(--text-secondary)' }}
             >
@@ -412,7 +550,7 @@ export function ReportForm() {
               ? <Loader2 className="h-4 w-4 animate-spin" />
               : <Locate className="h-4 w-4" />
             }
-            Meinen Standort verwenden
+            {pickingGpsLabel}
           </button>
           {geo.error && (
             <p className="text-xs" style={{ color: 'var(--danger)' }}>{geo.error}</p>
@@ -585,6 +723,105 @@ export function ReportForm() {
                   />
                 </div>
               </Field>
+
+              <div
+                className="rounded-lg p-3"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'rgba(245,158,11,0.06)',
+                }}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      Sperr-Verlauf (optional)
+                    </p>
+                    <p className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      Setze Start und Ende. Wir zeichnen dann den Straßenverlauf der Sperre.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (form.routeEnabled) {
+                        setForm((f) => ({
+                          ...f,
+                          routeEnabled: false,
+                          routeStart: null,
+                          routeEnd: null,
+                        }))
+                        setRouteError(null)
+                        return
+                      }
+                      setForm((f) => ({ ...f, routeEnabled: true }))
+                    }}
+                    className="rounded-md px-3 py-1.5 text-xs font-semibold transition-colors"
+                    style={{
+                      background: form.routeEnabled ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)',
+                      color: form.routeEnabled ? '#ef4444' : '#10b981',
+                      border: `1px solid ${form.routeEnabled ? 'rgba(239,68,68,0.35)' : 'rgba(16,185,129,0.35)'}`,
+                    }}
+                  >
+                    {form.routeEnabled ? 'Verlauf entfernen' : 'Verlauf hinzufügen'}
+                  </button>
+                </div>
+
+                {form.routeEnabled && (
+                  <div className="mt-3 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openRoutePointPicker('route_start')}
+                      className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-left transition-colors"
+                      style={{
+                        border: '1px solid var(--border)',
+                        color: 'var(--text-primary)',
+                        background: 'var(--bg-card)',
+                      }}
+                    >
+                      <span>
+                        Startpunkt setzen
+                      </span>
+                      <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        {form.routeStart
+                          ? `${formatCoord(form.routeStart.lat)}, ${formatCoord(form.routeStart.lng)}`
+                          : 'auf Karte wählen'}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => openRoutePointPicker('route_end')}
+                      className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-left transition-colors"
+                      style={{
+                        border: '1px solid var(--border)',
+                        color: 'var(--text-primary)',
+                        background: 'var(--bg-card)',
+                      }}
+                    >
+                      <span>
+                        Endpunkt setzen
+                      </span>
+                      <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        {form.routeEnd
+                          ? `${formatCoord(form.routeEnd.lat)}, ${formatCoord(form.routeEnd.lng)}`
+                          : 'auf Karte wählen'}
+                      </span>
+                    </button>
+
+                    {routeStraightDistanceM !== null && (
+                      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        Luftlinie zwischen Start und Ende: {routeStraightDistanceM} m.
+                      </p>
+                    )}
+
+                    {routeError && (
+                      <p className="text-xs" style={{ color: 'var(--danger)' }}>
+                        {routeError}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </>
           )}
 

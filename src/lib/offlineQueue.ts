@@ -1,6 +1,6 @@
 'use client'
 
-import type { ClosureType, SeverityLevel } from '@/lib/types'
+import type { ClosureRoutePath, ClosureType, SeverityLevel } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 
 export interface QueuedReport {
@@ -13,6 +13,12 @@ export interface QueuedReport {
   severity: SeverityLevel
   expected_end: string | null
   reported_by: string | null
+  route_start_lat: number | null
+  route_start_lng: number | null
+  route_end_lat: number | null
+  route_end_lng: number | null
+  route_path: ClosureRoutePath | null
+  route_distance_m: number | null
   // Base64 encoded file string
   photoDataUrl: string | null
   photoType: string | null
@@ -97,6 +103,12 @@ export async function syncOfflineQueue() {
         expected_end: report.expected_end,
         photo_url:    photoUrl,
         reported_by:  report.reported_by,
+        route_start_lat: report.route_start_lat,
+        route_start_lng: report.route_start_lng,
+        route_end_lat: report.route_end_lat,
+        route_end_lng: report.route_end_lng,
+        route_path: report.route_path,
+        route_distance_m: report.route_distance_m,
         status:       'active',
       })
 

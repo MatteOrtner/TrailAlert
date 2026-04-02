@@ -3,6 +3,12 @@ export type ClosureStatus = 'active' | 'resolved' | 'unconfirmed' | 'pending_rev
 export type SeverityLevel = 'full_closure' | 'partial' | 'warning'
 export type VoteType = 'confirm' | 'deny'
 
+export interface ClosureRoutePath {
+  type: 'LineString'
+  // GeoJSON order: [lng, lat]
+  coordinates: [number, number][]
+}
+
 export interface Closure {
   id: string
   latitude: number
@@ -15,6 +21,12 @@ export interface Closure {
   photo_url: string | null
   reported_by: string | null
   expected_end: string | null
+  route_start_lat?: number | null
+  route_start_lng?: number | null
+  route_end_lat?: number | null
+  route_end_lng?: number | null
+  route_path?: ClosureRoutePath | null
+  route_distance_m?: number | null
   upvotes: number
   downvotes: number
   created_at: string
