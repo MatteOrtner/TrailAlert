@@ -59,6 +59,23 @@ function getClosureRoutePositions(closure: Closure): [number, number][] | null {
   return null
 }
 
+function getClosureRouteEndMarker(closure: Closure): Closure | null {
+  if (closure.route_end_lat == null || closure.route_end_lng == null) return null
+
+  // Skip duplicate marker if start and end collapse to the same point.
+  const isSamePoint =
+    Math.abs(closure.latitude - closure.route_end_lat) < 0.000001 &&
+    Math.abs(closure.longitude - closure.route_end_lng) < 0.000001
+
+  if (isSamePoint) return null
+
+  return {
+    ...closure,
+    latitude: closure.route_end_lat,
+    longitude: closure.route_end_lng,
+  }
+}
+
 // ---------------------------------------------------------------------------
 // GPS button — inside MapContainer (needs useMap)
 // ---------------------------------------------------------------------------
@@ -283,6 +300,18 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
               autoOpen={closure.id === openPopupFor}
             />
           ))}
+
+          {closures.map((closure) => {
+            const endpointMarker = getClosureRouteEndMarker(closure)
+            if (!endpointMarker) return null
+
+            return (
+              <ClosureMarker
+                key={`endpoint-${closure.id}`}
+                closure={endpointMarker}
+              />
+            )
+          })}
 
           {/* Watch area circles — visible for logged-in users */}
           {user && areas.map((area) => (
