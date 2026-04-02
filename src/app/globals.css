@@ -187,4 +187,9 @@ html {
   .leaflet-bottom {
     bottom: 36px !important;
   }
+
+  .mobile-filter-open .leaflet-control-zoom,
+  .mobile-filter-open .ta-location-control {
+    display: none !important;
+  }
 }

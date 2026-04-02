@@ -93,7 +93,7 @@ function LocationControl() {
   }, [position, map])
 
   return (
-    <div className="leaflet-bottom leaflet-left" style={{ zIndex: 1000 }}>
+    <div className="leaflet-bottom leaflet-left ta-location-control" style={{ zIndex: 1000 }}>
       <div className="leaflet-control mb-3 ml-3">
         <button
           type="button"
@@ -248,7 +248,7 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
       />
 
       {/* Map area */}
-      <div className="relative flex-1 min-w-0">
+      <div className={`relative flex-1 min-w-0${sidebarOpen ? ' mobile-filter-open' : ''}`}>
         <MapContainer
           center={[46.83, 12.76]}
           zoom={11}
