@@ -109,6 +109,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<dein-anon-key>
 
 # App URL (für OG-Tags und E-Mail-Links)
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Optional: Rechtliches (Impressum / Datenschutz)
+NEXT_PUBLIC_LEGAL_OWNER=Max Mustermann
+NEXT_PUBLIC_LEGAL_ADDRESS=Musterstraße 1, 9900 Lienz, Österreich
+NEXT_PUBLIC_LEGAL_EMAIL=hello@example.com
+
+# Optional: Client Error Telemetry
+NEXT_PUBLIC_CLIENT_ERROR_REPORTING=true
 ```
 
 ### 5. SQL-Migrationen ausführen
@@ -132,6 +140,8 @@ Falls du ohne CLI arbeitest, öffne den **SQL Editor** im Supabase Dashboard (Da
 008_closure_comments.sql
 009_shared_routes.sql
 010_security_hardening.sql
+011_shared_routes_cleanup_cron.sql
+012_ops_hardening_and_rls_cleanup.sql
 ```
 
 Optional — Testdaten für die Region Lienz/Osttirol laden:
@@ -148,6 +158,9 @@ Im Supabase Dashboard unter **Authentication → Providers**:
 - **Google** *(optional)*: Client ID + Secret aus der [Google Cloud Console](https://console.cloud.google.com) eintragen
 
 Redirect URL eintragen: `https://<project-ref>.supabase.co/auth/v1/callback`
+
+Empfohlen für Launch-Sicherheit: **Authentication → Settings → Password Security → Leaked Password Protection** aktivieren.
+Hinweis: Bei Supabase Free kann diese Option je nach Plan-Limit nicht verfügbar sein.
 
 ### 7. Entwicklungsserver starten
 
@@ -182,6 +195,14 @@ Watch Areas senden E-Mails über [Resend](https://resend.com):
    - URL: `https://<project-ref>.supabase.co/functions/v1/notify-new-closure`
    - Header: `x-webhook-secret: <WEBHOOK_SECRET>`
    - Wichtig: `WEBHOOK_SECRET` ist verpflichtend. Ohne Secret antwortet die Funktion mit `500`.
+5. Optional empfohlen: `pg_cron` Extension aktivieren (Database → Extensions), damit `011_shared_routes_cleanup_cron.sql` den 30-Tage-Cleanup von `shared_routes` automatisch planen kann.
+
+### Betrieb / Ops
+
+- E2E-Notification-Check: `docs/notification-e2e-check.md`
+- Incident-Runbook (Rollback + Recovery): `docs/incident-runbook.md`
+- Monitoring Setup (Healthchecks, Alerts, Logs): `docs/monitoring-setup.md`
+- Health Endpoint: `GET /api/health`
 
 ---
 
@@ -228,13 +249,16 @@ trailalert/
 │   │   │   └── server.ts            # Server-Client (async cookies)
 │   │   └── types.ts                 # Closure, Vote, WatchArea Interfaces
 │   │
-│   └── proxy.ts                     # Next.js 16 Proxy (ehem. middleware.ts)
+│   ├── proxy.ts                     # Next.js 16 Proxy (ehem. middleware.ts)
+│   ├── app/datenschutz/page.tsx     # Datenschutz-Seite
+│   ├── app/impressum/page.tsx       # Impressum
+│   └── app/api/health/route.ts      # Healthcheck für Monitoring
 │
 ├── supabase/
 │   ├── migrations/
 │   │   ├── 001_initial_schema.sql   # Basis-Schema + RLS
-│   │   ├── ...                      # Weitere Migrations (003-009)
-│   │   └── 010_security_hardening.sql # Security-Hardening für Votes/Webhook
+│   │   ├── ...                      # Weitere Migrations (003-011)
+│   │   └── 012_ops_hardening_and_rls_cleanup.sql # RLS + Trigger Cleanup
 │   ├── functions/
 │   │   └── notify-new-closure/
 │   │       └── index.ts             # Deno Edge Function: Haversine + Resend
