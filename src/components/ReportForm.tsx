@@ -174,7 +174,14 @@ export function ReportForm() {
   // We reuse the same map interaction for main position, route start and route end.
   onPositionPickedRef.current = (lat, lng) => {
     if (pickingTarget === 'route_start') {
-      setForm((f) => ({ ...f, routeEnabled: true, routeStart: { lat, lng } }))
+      setForm((f) => ({
+        ...f,
+        routeEnabled: true,
+        routeStart: { lat, lng },
+        // Keep closure marker anchored to the route start.
+        position: { lat, lng },
+      }))
+      setErrors((e) => ({ ...e, position: undefined }))
       setRouteError(null)
     } else if (pickingTarget === 'route_end') {
       setForm((f) => ({ ...f, routeEnabled: true, routeEnd: { lat, lng } }))
@@ -264,7 +271,14 @@ export function ReportForm() {
     const picked = { lat: geo.position.latitude, lng: geo.position.longitude }
 
     if (pickingTarget === 'route_start') {
-      setForm((f) => ({ ...f, routeEnabled: true, routeStart: picked }))
+      setForm((f) => ({
+        ...f,
+        routeEnabled: true,
+        routeStart: picked,
+        // Keep closure marker anchored to the route start.
+        position: picked,
+      }))
+      setErrors((e) => ({ ...e, position: undefined }))
       setRouteError(null)
     } else if (pickingTarget === 'route_end') {
       setForm((f) => ({ ...f, routeEnabled: true, routeEnd: picked }))
@@ -345,7 +359,11 @@ export function ReportForm() {
 
   // --- Submit ---
   async function handleSubmit() {
-    if (submitting || !form.position) return
+    const routeStart = form.routeEnabled ? form.routeStart : null
+    const routeEnd = form.routeEnabled ? form.routeEnd : null
+    const markerPosition = routeStart ?? form.position
+
+    if (submitting || !markerPosition) return
     if (form.routeEnabled && (!form.routeStart || !form.routeEnd)) {
       setRouteError('Bitte Start und Ende für den Sperr-Verlauf setzen.')
       setStep(1)
@@ -354,9 +372,6 @@ export function ReportForm() {
 
     setSubmitting(true)
     setSubmitError(null)
-
-    const routeStart = form.routeEnabled ? form.routeStart : null
-    const routeEnd = form.routeEnabled ? form.routeEnd : null
 
     let routePath: Closure['route_path'] = null
     let routeDistanceM: number | null = null
@@ -389,8 +404,8 @@ export function ReportForm() {
 
         saveToOfflineQueue({
           id:           crypto.randomUUID(),
-          latitude:     form.position.lat,
-          longitude:    form.position.lng,
+          latitude:     markerPosition.lat,
+          longitude:    markerPosition.lng,
           title:        form.title.trim(),
           description:  form.description.trim() || null,
           closure_type: form.type,
@@ -441,8 +456,8 @@ export function ReportForm() {
     }
 
     const insertPayload: Record<string, unknown> = {
-      latitude: form.position.lat,
-      longitude: form.position.lng,
+      latitude: markerPosition.lat,
+      longitude: markerPosition.lng,
       title: form.title.trim(),
       description: form.description.trim() || null,
       closure_type: form.type,
