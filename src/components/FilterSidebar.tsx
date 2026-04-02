@@ -418,7 +418,7 @@ export function FilterSidebar({
             <Toggle
               checked={filters.confirmedOnly}
               onChange={(v) => setFilters({ ...filters, confirmedOnly: v })}
-              label="Nur bestätigte Sperren"
+              label="Nur bestätigte Sperren (ab 2 Stimmen)"
             />
           </Section>
         </div>

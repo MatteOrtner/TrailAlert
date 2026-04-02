@@ -18,6 +18,7 @@ export interface ClosureFilters {
 
 const ALL_TYPES:      ClosureType[]    = ['forestwork', 'construction', 'damage', 'other']
 const ALL_SEVERITIES: SeverityLevel[]  = ['full_closure', 'partial', 'warning']
+const CONFIRMED_MIN_UPVOTES = 2
 
 export const DEFAULT_FILTERS: ClosureFilters = {
   types:         ALL_TYPES,
@@ -150,7 +151,7 @@ export function useClosures() {
       if (distanceM > filters.distanceKm * 1000) return false
     }
 
-    if (filters.confirmedOnly && c.upvotes === 0) return false
+    if (filters.confirmedOnly && c.upvotes < CONFIRMED_MIN_UPVOTES) return false
 
     return true
   }), [allClosures, filters, timeRangeCutoff])
