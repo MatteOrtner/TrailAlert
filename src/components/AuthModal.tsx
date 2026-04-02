@@ -31,6 +31,12 @@ type Status = 'idle' | 'loading' | 'sent' | 'error'
 // Component
 // ---------------------------------------------------------------------------
 
+function getAuthRedirectTo() {
+  const envBase = process.env.NEXT_PUBLIC_APP_URL?.trim()
+  const base = envBase && envBase.length > 0 ? envBase : window.location.origin
+  return new URL('/auth/callback', base).toString()
+}
+
 export function AuthModal() {
   const { isOpen, close: onClose } = useAuthModal()
   const [email, setEmail]   = useState('')
@@ -52,7 +58,7 @@ export function AuthModal() {
   async function handleGoogle() {
     setStatus('loading')
     const supabase   = createClient()
-    const redirectTo = `${window.location.origin}/auth/callback`
+    const redirectTo = getAuthRedirectTo()
     const { error }  = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options:  { redirectTo },
@@ -72,7 +78,7 @@ export function AuthModal() {
     setErrMsg('')
 
     const supabase   = createClient()
-    const redirectTo = `${window.location.origin}/auth/callback`
+    const redirectTo = getAuthRedirectTo()
 
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),

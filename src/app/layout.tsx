@@ -20,7 +20,7 @@ const jakartaSans = Plus_Jakarta_Sans({
   display: 'swap',
 })
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://trailalert.vercel.app'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://trailalert.at'
 const TITLE   = 'TrailAlert — Forstwege-Sperren für Mountainbiker'
 const DESC    = 'Aktuelle Forstwege-Sperren in Osttirol und Tirol. Crowdsourcing-Plattform für Mountainbiker — melde Sperren, stimme ab und behalte deine Lieblingsgebiete im Blick.'
 
