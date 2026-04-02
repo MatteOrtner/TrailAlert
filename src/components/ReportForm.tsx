@@ -151,11 +151,13 @@ export function ReportForm() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const touchStartY  = useRef(0)
   const router       = useRouter()
+  const gpsPickPendingRef = useRef(false)
 
   function resetFormState() {
     if (photoPreview) {
       URL.revokeObjectURL(photoPreview)
     }
+    gpsPickPendingRef.current = false
     setStep(0)
     setForm(INITIAL_FORM)
     setErrors({})
@@ -192,6 +194,7 @@ export function ReportForm() {
       setStep(1)
     }
 
+    gpsPickPendingRef.current = false
     setIsPickingLocation(false)
     setPickingTarget(null)
   }
@@ -235,6 +238,7 @@ export function ReportForm() {
   }
 
   function openRoutePointPicker(target: 'route_start' | 'route_end') {
+    gpsPickPendingRef.current = false
     setForm((f) => ({ ...f, routeEnabled: true }))
     setRouteError(null)
     setPickingTarget(target)
@@ -242,11 +246,17 @@ export function ReportForm() {
 
   function cancelPickingMode() {
     if (pickingTarget && pickingTarget !== 'main') {
+      gpsPickPendingRef.current = false
       setPickingTarget(null)
       setIsPickingLocation(false)
       return
     }
     handleClose()
+  }
+
+  function requestGpsForCurrentPicker() {
+    gpsPickPendingRef.current = true
+    geo.requestLocation()
   }
 
   function formatCoord(value: number) {
@@ -266,9 +276,10 @@ export function ReportForm() {
 
   // --- GPS: apply to whichever point the user is currently picking ---
   useEffect(() => {
-    if (!geo.position || !isOpen || !pickingTarget) return
+    if (!geo.position || !isOpen || !pickingTarget || !gpsPickPendingRef.current) return
 
     const picked = { lat: geo.position.latitude, lng: geo.position.longitude }
+    gpsPickPendingRef.current = false
 
     if (pickingTarget === 'route_start') {
       setForm((f) => ({
@@ -292,6 +303,10 @@ export function ReportForm() {
     setIsPickingLocation(false)
     setPickingTarget(null)
   }, [geo.position, isOpen, pickingTarget, setIsPickingLocation])
+
+  useEffect(() => {
+    if (geo.error) gpsPickPendingRef.current = false
+  }, [geo.error])
 
   // Compute nearby open closures when the user picks a location
   useEffect(() => {
@@ -583,7 +598,7 @@ export function ReportForm() {
           </div>
           <button
             type="button"
-            onClick={() => geo.requestLocation()}
+            onClick={requestGpsForCurrentPicker}
             disabled={geo.loading}
             className="flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold"
             style={{
