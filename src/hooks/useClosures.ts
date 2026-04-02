@@ -2,13 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState, startTransition, type Dispatch, type SetStateAction } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { haversineMeters } from '@/lib/geo'
 import type { Closure, ClosureType, SeverityLevel } from '@/lib/types'
+
+export type DistanceFilterKm = 'all' | 3 | 10 | 25
 
 export interface ClosureFilters {
   types:        ClosureType[]        // empty = all types
   severities:   SeverityLevel[]      // empty = all severities
   timeRange:    'all' | '7d' | '30d'
   confirmedOnly: boolean
+  distanceKm: DistanceFilterKm
+  distanceCenter: { lat: number; lng: number } | null
 }
 
 const ALL_TYPES:      ClosureType[]    = ['forestwork', 'construction', 'damage', 'other']
@@ -19,6 +24,8 @@ export const DEFAULT_FILTERS: ClosureFilters = {
   severities:    ALL_SEVERITIES,
   timeRange:     'all',
   confirmedOnly: false,
+  distanceKm:    'all',
+  distanceCenter: null,
 }
 
 export function isDefaultFilters(f: ClosureFilters): boolean {
@@ -26,7 +33,8 @@ export function isDefaultFilters(f: ClosureFilters): boolean {
     f.types.length === ALL_TYPES.length &&
     f.severities.length === ALL_SEVERITIES.length &&
     f.timeRange === 'all' &&
-    !f.confirmedOnly
+    !f.confirmedOnly &&
+    f.distanceKm === 'all'
   )
 }
 
@@ -129,6 +137,17 @@ export function useClosures() {
 
     if (timeRangeCutoff !== null && new Date(c.created_at).getTime() < timeRangeCutoff) {
       return false
+    }
+
+    if (filters.distanceKm !== 'all' && filters.distanceCenter) {
+      const distanceM = haversineMeters(
+        filters.distanceCenter.lat,
+        filters.distanceCenter.lng,
+        c.latitude,
+        c.longitude,
+      )
+
+      if (distanceM > filters.distanceKm * 1000) return false
     }
 
     if (filters.confirmedOnly && c.upvotes === 0) return false

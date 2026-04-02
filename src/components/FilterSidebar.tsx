@@ -1,10 +1,12 @@
 'use client'
 
-import { useRef } from 'react'
-import { X, SlidersHorizontal } from 'lucide-react'
+import { useEffect, useRef } from 'react'
+import { X, SlidersHorizontal, Locate, Loader2 } from 'lucide-react'
+import { useGeolocation } from '@/hooks/useGeolocation'
 import {
   DEFAULT_FILTERS,
   isDefaultFilters,
+  type DistanceFilterKm,
   type ClosureFilters,
 } from '@/hooks/useClosures'
 import type { ClosureType, SeverityLevel } from '@/lib/types'
@@ -30,6 +32,13 @@ const TIME_OPTIONS: { value: ClosureFilters['timeRange']; label: string }[] = [
   { value: 'all', label: 'Alle' },
   { value: '7d',  label: 'Letzte 7 Tage' },
   { value: '30d', label: 'Letzte 30 Tage' },
+]
+
+const DISTANCE_OPTIONS: { value: DistanceFilterKm; label: string }[] = [
+  { value: 'all', label: 'Alle' },
+  { value: 3,     label: '3 km' },
+  { value: 10,    label: '10 km' },
+  { value: 25,    label: '25 km' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -141,6 +150,9 @@ export function FilterSidebar({
   total,
 }: FilterSidebarProps) {
   const touchStartY = useRef(0)
+  const geo = useGeolocation()
+  const pendingDistanceKmRef = useRef<DistanceFilterKm | null>(null)
+  const lastAppliedLocationRef = useRef<string | null>(null)
 
   function handleTouchStart(e: React.TouchEvent) {
     touchStartY.current = e.touches[0].clientY
@@ -162,6 +174,58 @@ export function FilterSidebar({
       : [...filters.severities, value]
     setFilters({ ...filters, severities: next })
   }
+
+  function requestLocationForDistance(nextDistanceKm: DistanceFilterKm) {
+    pendingDistanceKmRef.current = nextDistanceKm
+    geo.requestLocation()
+  }
+
+  function setDistanceFilter(nextDistanceKm: DistanceFilterKm) {
+    if (nextDistanceKm === 'all') {
+      pendingDistanceKmRef.current = null
+      setFilters({
+        ...filters,
+        distanceKm: 'all',
+        distanceCenter: null,
+      })
+      return
+    }
+
+    if (filters.distanceCenter) {
+      setFilters({ ...filters, distanceKm: nextDistanceKm })
+      return
+    }
+
+    requestLocationForDistance(nextDistanceKm)
+  }
+
+  function refreshDistanceLocation() {
+    const nextDistanceKm = filters.distanceKm === 'all' ? 10 : filters.distanceKm
+    requestLocationForDistance(nextDistanceKm)
+  }
+
+  useEffect(() => {
+    if (geo.error) pendingDistanceKmRef.current = null
+  }, [geo.error])
+
+  useEffect(() => {
+    if (!geo.position) return
+
+    const lat = geo.position.latitude
+    const lng = geo.position.longitude
+    const locationKey = `${lat.toFixed(6)},${lng.toFixed(6)}`
+    const pendingDistanceKm = pendingDistanceKmRef.current
+
+    if (pendingDistanceKm === null && lastAppliedLocationRef.current === locationKey) return
+    lastAppliedLocationRef.current = locationKey
+
+    setFilters({
+      ...filters,
+      distanceKm: pendingDistanceKm ?? (filters.distanceKm === 'all' ? 10 : filters.distanceKm),
+      distanceCenter: { lat, lng },
+    })
+    pendingDistanceKmRef.current = null
+  }, [geo.position, filters, setFilters])
 
   const isDirty = !isDefaultFilters(filters)
 
@@ -280,6 +344,65 @@ export function FilterSidebar({
                     }}
                   >
                     {filters.timeRange === opt.value && (
+                      <span className="h-2 w-2 rounded-full" style={{ background: 'var(--accent)' }} />
+                    )}
+                  </span>
+                  <span className="text-sm text-text-primary">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          </Section>
+
+          <div className="h-px" style={{ background: 'var(--border)' }} />
+
+          <Section title="In meiner Nähe (GPS)">
+            <button
+              type="button"
+              onClick={refreshDistanceLocation}
+              disabled={geo.loading}
+              className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors"
+              style={{
+                background: 'var(--bg-dark)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border)',
+                opacity: geo.loading ? 0.7 : 1,
+              }}
+            >
+              {geo.loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Locate className="h-4 w-4" />
+              )}
+              {filters.distanceCenter ? 'Standort aktualisieren' : 'Standort verwenden'}
+            </button>
+
+            {filters.distanceCenter && (
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Aktiv: {filters.distanceCenter.lat.toFixed(4)}, {filters.distanceCenter.lng.toFixed(4)}
+              </p>
+            )}
+
+            {geo.error && (
+              <p className="text-xs" style={{ color: 'var(--danger)' }}>
+                {geo.error}
+              </p>
+            )}
+
+            <div className="mt-1 flex flex-col gap-1">
+              {DISTANCE_OPTIONS.map((opt) => (
+                <button
+                  key={String(opt.value)}
+                  type="button"
+                  onClick={() => setDistanceFilter(opt.value)}
+                  className="flex w-full cursor-pointer items-center gap-2.5 py-1.5 select-none text-left"
+                >
+                  <span
+                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors"
+                    style={{
+                      borderColor: filters.distanceKm === opt.value ? 'var(--accent)' : 'var(--border)',
+                    }}
+                  >
+                    {filters.distanceKm === opt.value && (
                       <span className="h-2 w-2 rounded-full" style={{ background: 'var(--accent)' }} />
                     )}
                   </span>
