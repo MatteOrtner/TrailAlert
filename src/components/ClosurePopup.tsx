@@ -121,14 +121,28 @@ export function ClosurePopup({ closure }: Props) {
 
     const supabase = createClient()
 
-    // --- Change vote (already voted, clicking the other button) ---
-    if (voted) {
-      if (!user) {
-        setVoteError('Du hast bereits abgestimmt. Melde dich an, um deine Stimme zu ändern.')
-        setSubmitting(false)
-        return
+    // Anonymous users vote through a constrained RPC that only touches
+    // the row identified by closure_id + anon_fingerprint.
+    if (!user) {
+      const { error } = await supabase.rpc('cast_or_update_anon_vote', {
+        p_closure_id: closure.id,
+        p_vote_type: voteType,
+        p_anon_fingerprint: getFingerprint(),
+      })
+
+      if (error) {
+        setVoteError('Abstimmung fehlgeschlagen.')
+      } else {
+        setVoted(voteType)
+        saveVote(closure.id, voteType)
       }
 
+      setSubmitting(false)
+      return
+    }
+
+    // --- Change vote (already voted, clicking the other button) ---
+    if (voted) {
       const { error } = await supabase
         .from('votes')
         .update({ vote_type: voteType })
@@ -144,9 +158,7 @@ export function ClosurePopup({ closure }: Props) {
 
     // --- New vote ---
     } else {
-      const payload = user
-        ? { closure_id: closure.id, vote_type: voteType, user_id: user.id }
-        : { closure_id: closure.id, vote_type: voteType, anon_fingerprint: getFingerprint() }
+      const payload = { closure_id: closure.id, vote_type: voteType, user_id: user.id }
 
       const { error } = await supabase.from('votes').insert(payload)
 
@@ -154,11 +166,7 @@ export function ClosurePopup({ closure }: Props) {
         setVoted(voteType)
         saveVote(closure.id, voteType)
       } else if (error.code === '23505') {
-        setVoteError(
-          user
-            ? 'Du hast bereits abgestimmt.'
-            : 'Du hast bereits abgestimmt. Melde dich an, um deine Stimme zu ändern.'
-        )
+        setVoteError('Du hast bereits abgestimmt.')
       } else {
         setVoteError('Abstimmung fehlgeschlagen.')
       }
