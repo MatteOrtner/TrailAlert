@@ -2,14 +2,22 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ADMIN_EMAILS } from '@/lib/constants'
+import type { ClosureStatus } from '@/lib/types'
 
 type Params = { params: Promise<{ id: string }> }
+const ALLOWED_STATUSES: ReadonlySet<ClosureStatus> = new Set([
+  'active',
+  'resolved',
+  'unconfirmed',
+  'pending_review',
+])
 
 // Verify the caller is an authenticated admin
 async function requireAdmin() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user?.email || !ADMIN_EMAILS.includes(user.email)) {
+  const userEmail = user?.email?.toLowerCase()
+  if (!userEmail || !ADMIN_EMAILS.includes(userEmail)) {
     return null
   }
   return user
@@ -24,9 +32,15 @@ export async function PATCH(request: Request, { params }: Params) {
 
   const { id } = await params
   const { status } = await request.json()
+  if (!ALLOWED_STATUSES.has(status as ClosureStatus)) {
+    return NextResponse.json({ error: 'Ungültiger Status.' }, { status: 400 })
+  }
 
   const admin = createAdminClient()
-  const { error } = await admin.from('closures').update({ status }).eq('id', id)
+  const { error } = await admin
+    .from('closures')
+    .update({ status: status as ClosureStatus })
+    .eq('id', id)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 502 })

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { AlertTriangle, MapPin, Plus, Menu, X } from 'lucide-react'
 import { useReportForm } from '@/contexts/ReportFormContext'
 import { AuthButton, AuthButtonMobile } from './AuthButton'
@@ -48,7 +49,7 @@ export function Header() {
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-4 sm:px-6">
 
         {/* Logo */}
-        <a href="/" className="flex items-center gap-2 shrink-0">
+        <Link href="/" className="flex items-center gap-2 shrink-0">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/15">
             <AlertTriangle className="h-4 w-4 text-accent" strokeWidth={2.5} />
           </span>
@@ -56,7 +57,7 @@ export function Header() {
             <span className="text-text-primary">Trail</span>
             <span className="text-accent">Alert</span>
           </span>
-        </a>
+        </Link>
 
         {/* Region badge — hidden on mobile */}
         <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-border bg-bg-card px-3 py-1.5">
@@ -68,7 +69,7 @@ export function Header() {
 
         {/* Desktop actions */}
         <div className="hidden sm:flex items-center gap-3">
-          <a
+          <Link
             href="/tour-check"
             className="rounded-lg px-3 py-2 text-sm font-medium transition-colors"
             style={{ color: 'var(--text-secondary)' }}
@@ -76,7 +77,7 @@ export function Header() {
             onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
           >
             Tour prüfen
-          </a>
+          </Link>
           <button
             type="button"
             onClick={handleReport}
@@ -118,14 +119,14 @@ export function Header() {
             Sperre melden
           </button>
 
-          <a
+          <Link
             href="/tour-check"
             onClick={() => setMenuOpen(false)}
             className="flex items-center justify-center rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors"
             style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
           >
             Tour prüfen
-          </a>
+          </Link>
 
           <AuthButtonMobile onClose={() => setMenuOpen(false)} />
         </div>

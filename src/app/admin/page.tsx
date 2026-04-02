@@ -6,17 +6,13 @@ import { ADMIN_EMAILS } from '@/lib/constants'
 export default async function AdminPage() {
   const supabase = await createClient()
 
-  // 1. Get logged in User
   const { data: { user } } = await supabase.auth.getUser()
-  
-  // 2. Gate access conditionally (for now, if no one is in ADMIN_EMAILS, allow the first person or just un-gate it for testing. But safer to gate it and tell Matte)
-  if (!user || user.email && !ADMIN_EMAILS.includes(user.email)) {
-    // If you haven't added your email yet to the array above, we will let you pass for testing if the array is basically empty.
-    // Production: uncomment the below redirect!
-    // redirect('/') 
+
+  const userEmail = user?.email?.toLowerCase()
+  if (!userEmail || !ADMIN_EMAILS.includes(userEmail)) {
+    redirect('/')
   }
 
-  // 3. Fetch all closures (newest first)
   const { data: closures, error } = await supabase
     .from('closures')
     .select('*')

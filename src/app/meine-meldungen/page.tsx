@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { formatDistanceToNow } from 'date-fns'
 import { de } from 'date-fns/locale'
-import { CheckCircle, Trash2, MapPin, Loader2, AlertTriangle, Share2 } from 'lucide-react'
+import { CheckCircle, MapPin, Loader2, AlertTriangle, Share2 } from 'lucide-react'
 import type { Closure, ClosureType, SeverityLevel } from '@/lib/types'
 
 // ---------------------------------------------------------------------------
@@ -62,7 +63,7 @@ function ClosureCard({
           text: `Schau dir das mal an: ${closure.title}`,
           url,
         })
-      } catch (err) {
+      } catch {
         // Ignored
       }
     } else {
@@ -153,18 +154,32 @@ export default function MeineMeldungenPage() {
   const [loading,  setLoading]         = useState(true)
 
   useEffect(() => {
-    if (!user) { setLoading(false); return }
-
-    createClient()
-      .from('closures')
-      .select('*')
-      .eq('reported_by', user.id)
-      .neq('status', 'resolved')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setClosures(data ?? [])
+    let cancelled = false
+    const timeoutId = window.setTimeout(() => {
+      if (!user) {
+        setClosures([])
         setLoading(false)
-      })
+        return
+      }
+
+      setLoading(true)
+      createClient()
+        .from('closures')
+        .select('*')
+        .eq('reported_by', user.id)
+        .neq('status', 'resolved')
+        .order('created_at', { ascending: false })
+        .then(({ data }) => {
+          if (cancelled) return
+          setClosures(data ?? [])
+          setLoading(false)
+        })
+    }, 0)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+    }
   }, [user])
 
   // Page wrapper — body is overflow-hidden so we scroll within this div
@@ -199,13 +214,13 @@ export default function MeineMeldungenPage() {
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             Melde dich an, um deine Meldungen zu sehen und zu verwalten.
           </p>
-          <a
+          <Link
             href="/"
             className="rounded-lg px-5 py-2.5 text-sm font-semibold"
             style={{ background: 'var(--accent)', color: 'var(--bg-dark)' }}
           >
             Zur Karte
-          </a>
+          </Link>
         </div>
       )}
 
@@ -231,13 +246,13 @@ export default function MeineMeldungenPage() {
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             Sperren die du meldest, erscheinen hier und können von dir verwaltet werden.
           </p>
-          <a
+          <Link
             href="/"
             className="rounded-lg px-5 py-2.5 text-sm font-semibold"
             style={{ background: 'var(--accent)', color: 'var(--bg-dark)' }}
           >
             Sperre melden
-          </a>
+          </Link>
         </div>
       )}
 

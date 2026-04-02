@@ -95,7 +95,7 @@ export function WelcomeSheet({ onDismiss }: Props) {
             className="w-full rounded-xl py-3 text-sm font-bold transition-colors"
             style={{ background: 'var(--accent)', color: 'var(--bg-dark)' }}
           >
-            Los geht's
+            Los geht&apos;s
           </button>
         </div>
       </div>

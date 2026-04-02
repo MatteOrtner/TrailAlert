@@ -6,14 +6,14 @@ import { useReportForm } from '@/contexts/ReportFormContext'
 
 export function ReportSuccessToast() {
   const { reportCount } = useReportForm()
-  const [visible, setVisible] = useState(false)
+  const [dismissedCount, setDismissedCount] = useState(0)
+  const visible = reportCount > dismissedCount
 
   useEffect(() => {
-    if (reportCount === 0) return
-    setVisible(true)
-    const id = setTimeout(() => setVisible(false), 5000)
+    if (!visible) return
+    const id = setTimeout(() => setDismissedCount(reportCount), 5000)
     return () => clearTimeout(id)
-  }, [reportCount])
+  }, [reportCount, visible])
 
   if (!visible) return null
 
@@ -33,7 +33,7 @@ export function ReportSuccessToast() {
       </p>
       <button
         type="button"
-        onClick={() => setVisible(false)}
+        onClick={() => setDismissedCount(reportCount)}
         className="shrink-0 rounded-md p-1 transition-colors hover:bg-bg-card-hover"
         style={{ color: 'var(--text-secondary)' }}
       >

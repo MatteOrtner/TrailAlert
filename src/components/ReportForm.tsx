@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import {
   X, Locate, ChevronRight, ChevronLeft,
   Upload, Loader2, ImageIcon,
@@ -281,7 +282,7 @@ export function ReportForm() {
 
         close()
         alert('Du bist offline! Deine Meldung wurde gespeichert und wird automatisch gepostet, sobald du wieder Internet-Empfang hast.')
-      } catch (e) {
+      } catch {
         setSubmitError('Fehler beim Offline-Speichern.')
       } finally {
         setSubmitting(false)
@@ -596,9 +597,12 @@ export function ReportForm() {
 
               {photoPreview ? (
                 <div className="relative">
-                  <img
+                  <Image
                     src={photoPreview}
                     alt="Vorschau"
+                    width={1200}
+                    height={800}
+                    unoptimized
                     className="w-full rounded-lg object-cover"
                     style={{ maxHeight: 240 }}
                   />

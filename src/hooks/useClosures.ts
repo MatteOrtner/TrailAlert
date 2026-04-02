@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, startTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, startTransition, type Dispatch, type SetStateAction } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Closure, ClosureType, SeverityLevel } from '@/lib/types'
 
@@ -30,13 +30,30 @@ export function isDefaultFilters(f: ClosureFilters): boolean {
   )
 }
 
+function getTimeRangeCutoff(timeRange: ClosureFilters['timeRange']): number | null {
+  if (timeRange === 'all') return null
+  const days = timeRange === '7d' ? 7 : 30
+  return Date.now() - days * 24 * 60 * 60 * 1000
+}
+
 export function useClosures() {
   const [allClosures, setAllClosures] = useState<Closure[]>([])
   const [loading, setLoading]         = useState(true)
   const [error, setError]             = useState<string | null>(null)
-  const [filters, setFilters]         = useState<ClosureFilters>(DEFAULT_FILTERS)
+  const [filters, setFiltersState]    = useState<ClosureFilters>(DEFAULT_FILTERS)
+  const [timeRangeCutoff, setTimeRangeCutoff] = useState<number | null>(null)
 
   const supabase = useRef(createClient())
+
+  const setFilters: Dispatch<SetStateAction<ClosureFilters>> = (nextFilters) => {
+    setFiltersState((prev) => {
+      const resolved = typeof nextFilters === 'function'
+        ? nextFilters(prev)
+        : nextFilters
+      setTimeRangeCutoff(getTimeRangeCutoff(resolved.timeRange))
+      return resolved
+    })
+  }
 
   useEffect(() => {
     const client = supabase.current
@@ -110,16 +127,14 @@ export function useClosures() {
     if (!filters.types.includes(c.closure_type)) return false
     if (!filters.severities.includes(c.severity)) return false
 
-    if (filters.timeRange !== 'all') {
-      const days   = filters.timeRange === '7d' ? 7 : 30
-      const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
-      if (new Date(c.created_at).getTime() < cutoff) return false
+    if (timeRangeCutoff !== null && new Date(c.created_at).getTime() < timeRangeCutoff) {
+      return false
     }
 
     if (filters.confirmedOnly && c.upvotes === 0) return false
 
     return true
-  }), [allClosures, filters])
+  }), [allClosures, filters, timeRangeCutoff])
 
   return {
     closures,

@@ -113,11 +113,25 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 ### 5. SQL-Migrationen ausführen
 
-Öffne den **SQL Editor** im Supabase Dashboard (Database → SQL Editor → New Query) und führe die folgenden Dateien **in dieser Reihenfolge** aus:
+Empfohlen (Supabase CLI):
+
+```bash
+supabase db push
+```
+
+Falls du ohne CLI arbeitest, öffne den **SQL Editor** im Supabase Dashboard (Database → SQL Editor → New Query) und führe **alle** Dateien aus `supabase/migrations/` in Dateinamen-Reihenfolge aus:
 
 ```
-supabase/migrations/001_initial_schema.sql   # Tabellen, RLS, Trigger, Realtime, Storage
-supabase/migrations/002_notify_webhook.sql   # Webhook-Funktion für E-Mail-Benachrichtigungen
+001_initial_schema.sql
+002_notify_webhook.sql
+003_vote_count_trigger.sql
+004_add_pending_review_status.sql
+005_auto_resolve_vote_trigger.sql
+006_fix_vote_user_constraint.sql
+007_pg_net_webhook.sql
+008_closure_comments.sql
+009_shared_routes.sql
+010_security_hardening.sql
 ```
 
 Optional — Testdaten für die Region Lienz/Osttirol laden:
@@ -167,6 +181,7 @@ Watch Areas senden E-Mails über [Resend](https://resend.com):
    - Table: `closures`, Event: `INSERT`
    - URL: `https://<project-ref>.supabase.co/functions/v1/notify-new-closure`
    - Header: `x-webhook-secret: <WEBHOOK_SECRET>`
+   - Wichtig: `WEBHOOK_SECRET` ist verpflichtend. Ohne Secret antwortet die Funktion mit `500`.
 
 ---
 
@@ -217,8 +232,9 @@ trailalert/
 │
 ├── supabase/
 │   ├── migrations/
-│   │   ├── 001_initial_schema.sql   # Schema, RLS, Trigger, Realtime, Storage
-│   │   └── 002_notify_webhook.sql   # pg_net Webhook-Trigger
+│   │   ├── 001_initial_schema.sql   # Basis-Schema + RLS
+│   │   ├── ...                      # Weitere Migrations (003-009)
+│   │   └── 010_security_hardening.sql # Security-Hardening für Votes/Webhook
 │   ├── functions/
 │   │   └── notify-new-closure/
 │   │       └── index.ts             # Deno Edge Function: Haversine + Resend
@@ -244,6 +260,7 @@ trailalert/
    NEXT_PUBLIC_SUPABASE_URL      https://<project-ref>.supabase.co
    NEXT_PUBLIC_SUPABASE_ANON_KEY <anon-key>
    NEXT_PUBLIC_APP_URL           https://trailalert.vercel.app
+   ADMIN_EMAILS                  admin1@example.com,admin2@example.com
    ```
 4. **Deploy** — Vercel erkennt Next.js automatisch
 
