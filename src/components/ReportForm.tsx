@@ -152,6 +152,24 @@ export function ReportForm() {
   const touchStartY  = useRef(0)
   const router       = useRouter()
 
+  function resetFormState() {
+    if (photoPreview) {
+      URL.revokeObjectURL(photoPreview)
+    }
+    setStep(0)
+    setForm(INITIAL_FORM)
+    setErrors({})
+    setPhotoFile(null)
+    setPhotoPreview(null)
+    setPhotoError(null)
+    setSubmitError(null)
+    setRouteError(null)
+    setDragOver(false)
+    setNearbyClosures([])
+    setSubmitting(false)
+    setPickingTarget(null)
+  }
+
   // Register position-picked callback so Map.tsx can deliver tapped lat/lng.
   // We reuse the same map interaction for main position, route start and route end.
   onPositionPickedRef.current = (lat, lng) => {
@@ -187,15 +205,14 @@ export function ReportForm() {
     setIsPickingLocation(false)
     // Reset after transition
     setTimeout(() => {
-      setStep(0)
-      setForm(INITIAL_FORM)
-      setErrors({})
-      setPhotoFile(null)
-      setPhotoPreview(null)
-      setPhotoError(null)
-      setRouteError(null)
-      setPickingTarget(null)
+      resetFormState()
     }, 300)
+  }
+
+  function closeAndResetNow() {
+    setIsPickingLocation(false)
+    resetFormState()
+    close()
   }
 
   function onHeaderTouchStart(e: React.TouchEvent) {
@@ -391,7 +408,7 @@ export function ReportForm() {
           createdAt:    Date.now()
         })
 
-        close()
+        closeAndResetNow()
         alert('Du bist offline! Deine Meldung wurde gespeichert und wird automatisch gepostet, sobald du wieder Internet-Empfang hast.')
       } catch {
         setSubmitError('Fehler beim Offline-Speichern.')
@@ -476,7 +493,7 @@ export function ReportForm() {
     // stay fully mounted. The server component re-renders with the new
     // ?closure= param, which passes targetClosureId down to Map, which
     // opens the marker popup — zero map re-initialization.
-    close()
+    closeAndResetNow()
     router.push(`/?closure=${closure.id}`)
   }
 
