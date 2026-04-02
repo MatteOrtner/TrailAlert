@@ -90,27 +90,39 @@ export async function syncOfflineQueue() {
       }
     }
 
+    const insertPayload: Record<string, unknown> = {
+      latitude: report.latitude,
+      longitude: report.longitude,
+      title: report.title,
+      description: report.description,
+      closure_type: report.closure_type,
+      severity: report.severity,
+      expected_end: report.expected_end,
+      photo_url: photoUrl,
+      reported_by: report.reported_by,
+      status: 'active',
+    }
+
+    const hasRouteData =
+      report.route_start_lat != null &&
+      report.route_start_lng != null &&
+      report.route_end_lat != null &&
+      report.route_end_lng != null &&
+      report.route_path != null
+
+    if (hasRouteData) {
+      insertPayload.route_start_lat = report.route_start_lat
+      insertPayload.route_start_lng = report.route_start_lng
+      insertPayload.route_end_lat = report.route_end_lat
+      insertPayload.route_end_lng = report.route_end_lng
+      insertPayload.route_path = report.route_path
+      insertPayload.route_distance_m = report.route_distance_m
+    }
+
     // Insert the report
     const { error: insertError } = await supabase
       .from('closures')
-      .insert({
-        latitude:     report.latitude,
-        longitude:    report.longitude,
-        title:        report.title,
-        description:  report.description,
-        closure_type: report.closure_type,
-        severity:     report.severity,
-        expected_end: report.expected_end,
-        photo_url:    photoUrl,
-        reported_by:  report.reported_by,
-        route_start_lat: report.route_start_lat,
-        route_start_lng: report.route_start_lng,
-        route_end_lat: report.route_end_lat,
-        route_end_lng: report.route_end_lng,
-        route_path: report.route_path,
-        route_distance_m: report.route_distance_m,
-        status:       'active',
-      })
+      .insert(insertPayload)
 
     if (!insertError) {
       // Successfully submitted, remove from local queue

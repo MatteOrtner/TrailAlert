@@ -423,32 +423,46 @@ export function ReportForm() {
       }
     }
 
+    const insertPayload: Record<string, unknown> = {
+      latitude: form.position.lat,
+      longitude: form.position.lng,
+      title: form.title.trim(),
+      description: form.description.trim() || null,
+      closure_type: form.type,
+      severity: form.severity,
+      expected_end: form.expectedEnd || null,
+      photo_url: photoUrl,
+      reported_by: user?.id ?? null,
+      status: 'active',
+    }
+
+    if (routeStart && routeEnd && routePath) {
+      insertPayload.route_start_lat = routeStart.lat
+      insertPayload.route_start_lng = routeStart.lng
+      insertPayload.route_end_lat = routeEnd.lat
+      insertPayload.route_end_lng = routeEnd.lng
+      insertPayload.route_path = routePath
+      insertPayload.route_distance_m = routeDistanceM
+    }
+
     const { data: closure, error: insertError } = await supabase
       .from('closures')
-      .insert({
-        latitude:     form.position.lat,
-        longitude:    form.position.lng,
-        title:        form.title.trim(),
-        description:  form.description.trim() || null,
-        closure_type: form.type,
-        severity:     form.severity,
-        expected_end: form.expectedEnd || null,
-        photo_url:    photoUrl,
-        reported_by:  user?.id ?? null,
-        route_start_lat: routeStart?.lat ?? null,
-        route_start_lng: routeStart?.lng ?? null,
-        route_end_lat: routeEnd?.lat ?? null,
-        route_end_lng: routeEnd?.lng ?? null,
-        route_path: routePath,
-        route_distance_m: routeDistanceM,
-        status:       'active',
-      })
+      .insert(insertPayload)
       .select()
       .single()
 
     setSubmitting(false)
 
     if (insertError || !closure) {
+      if (
+        form.routeEnabled &&
+        insertError?.message?.includes("Could not find the 'route_")
+      ) {
+        setSubmitError(
+          'Sperr-Verlauf konnte nicht gespeichert werden, weil die neue Datenbank-Migration noch nicht aktiv ist. Bitte Migration 013 ausführen.'
+        )
+        return
+      }
       // Surface the error clearly at the top-level
       setSubmitError(
         insertError?.message
