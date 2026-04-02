@@ -34,6 +34,8 @@ const SEVERITY_COLORS: Record<SeverityLevel, string> = {
   warning: '#eab308',
 }
 
+const PICKER_CROSSHAIR_COLOR = '#ef4444'
+
 function getClosureRoutePositions(closure: Closure): [number, number][] | null {
   const coords = closure.route_path?.coordinates
   if (Array.isArray(coords) && coords.length >= 2) {
@@ -345,12 +347,12 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
             style={{ paddingBottom: 100 }}
           >
             <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-              <circle cx="18" cy="18" r="10" stroke="#f59e0b" strokeWidth="2.5" fill="none" opacity="0.9"/>
-              <line x1="18" y1="0" x2="18" y2="10" stroke="#f59e0b" strokeWidth="2" opacity="0.9"/>
-              <line x1="18" y1="26" x2="18" y2="36" stroke="#f59e0b" strokeWidth="2" opacity="0.9"/>
-              <line x1="0" y1="18" x2="10" y2="18" stroke="#f59e0b" strokeWidth="2" opacity="0.9"/>
-              <line x1="26" y1="18" x2="36" y2="18" stroke="#f59e0b" strokeWidth="2" opacity="0.9"/>
-              <circle cx="18" cy="18" r="2.5" fill="#f59e0b" opacity="0.9"/>
+              <circle cx="18" cy="18" r="10" stroke={PICKER_CROSSHAIR_COLOR} strokeWidth="2.5" fill="none" opacity="0.9"/>
+              <line x1="18" y1="0" x2="18" y2="10" stroke={PICKER_CROSSHAIR_COLOR} strokeWidth="2" opacity="0.9"/>
+              <line x1="18" y1="26" x2="18" y2="36" stroke={PICKER_CROSSHAIR_COLOR} strokeWidth="2" opacity="0.9"/>
+              <line x1="0" y1="18" x2="10" y2="18" stroke={PICKER_CROSSHAIR_COLOR} strokeWidth="2" opacity="0.9"/>
+              <line x1="26" y1="18" x2="36" y2="18" stroke={PICKER_CROSSHAIR_COLOR} strokeWidth="2" opacity="0.9"/>
+              <circle cx="18" cy="18" r="2.5" fill={PICKER_CROSSHAIR_COLOR} opacity="0.9"/>
             </svg>
           </div>
         )}
