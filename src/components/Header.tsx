@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, MapPin, Plus, Menu, X } from 'lucide-react'
+import Image from 'next/image'
+import { MapPin, Plus, Menu, X } from 'lucide-react'
 import { useReportForm } from '@/contexts/ReportFormContext'
 import { AuthButton, AuthButtonMobile } from './AuthButton'
 import { useAuth } from '@/contexts/AuthContext'
@@ -50,9 +51,14 @@ export function Header() {
 
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 shrink-0">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/15">
-            <AlertTriangle className="h-4 w-4 text-accent" strokeWidth={2.5} />
-          </span>
+          <Image
+            src="/branding/trailalert-brand.png"
+            alt="TrailAlert Logo"
+            width={32}
+            height={32}
+            className="h-8 w-8 rounded-lg object-cover"
+            priority
+          />
           <span className="text-lg font-bold tracking-tight">
             <span className="text-text-primary">Trail</span>
             <span className="text-accent">Alert</span>

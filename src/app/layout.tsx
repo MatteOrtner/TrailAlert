@@ -38,11 +38,24 @@ export const metadata: Metadata = {
     siteName:  'TrailAlert',
     title:     TITLE,
     description: DESC,
+    images: [
+      {
+        url: '/branding/trailalert-brand.png',
+        width: 1366,
+        height: 768,
+        alt: 'TrailAlert - Forstwege-Sperren fuer Mountainbiker',
+      },
+    ],
   },
   twitter: {
-    card:        'summary',
+    card:        'summary_large_image',
     title:       TITLE,
     description: DESC,
+    images: ['/branding/trailalert-brand.png'],
+  },
+  icons: {
+    icon: '/icon',
+    apple: '/icon',
   },
   manifest: '/manifest.json',
   appleWebApp: {
