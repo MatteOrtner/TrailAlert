@@ -210,7 +210,7 @@ export function TourCheckClient() {
   const mapClosures = closures.filter((c) => ACTIVE_STATUSES.has(c.status))
 
   return (
-    <div className="flex flex-col" style={{ minHeight: '100svh', background: 'var(--bg-dark)' }}>
+    <div className="flex flex-col" style={{ minHeight: '100dvh', background: 'var(--bg-dark)' }}>
 
       {/* ── Top panel ─────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 px-4 pb-4 pt-20">

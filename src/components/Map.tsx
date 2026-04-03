@@ -358,7 +358,7 @@ export default function Map({ targetClosureId }: { targetClosureId?: string | nu
         )}
 
         {/* Filter toggle button — offset below fixed header */}
-        <div className="absolute left-3 z-[1000]" style={{ top: 'calc(4rem + 0.75rem)' }}>
+        <div className="absolute left-3 z-[1000]" style={{ top: 'calc(env(safe-area-inset-top) + 4rem + 0.75rem)' }}>
           <FilterToggleButton
             open={sidebarOpen}
             onClick={() => setSidebarOpen((o) => !o)}

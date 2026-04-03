@@ -45,7 +45,7 @@ export default async function Home({ searchParams }: Props) {
   const targetClosureId = params.closure ?? null
 
   return (
-    <div className="relative w-full overflow-hidden" style={{ height: '100svh' }}>
+    <div className="relative w-full overflow-hidden" style={{ height: '100dvh' }}>
       <MapLoader targetClosureId={targetClosureId} />
       <AuthToast authOk={authOk} authError={authError} />
     </div>
