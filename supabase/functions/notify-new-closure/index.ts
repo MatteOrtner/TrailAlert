@@ -208,8 +208,8 @@ serve(async (req) => {
     return new Response('Server misconfigured', { status: 500 })
   }
 
-  const appUrl    = Deno.env.get('APP_URL') ?? 'https://trailalert.vercel.app'
-  const fromAddr  = Deno.env.get('EMAIL_FROM') ?? 'TrailAlert <onboarding@resend.dev>'
+  const appUrl    = Deno.env.get('APP_URL') ?? 'https://trailalert.at'
+  const fromAddr  = Deno.env.get('EMAIL_FROM') ?? 'TrailAlert <team@id.trailalert.at>'
 
   const sends = matching.map(async (area) => {
     const email = emailMap.get(area.user_id)
