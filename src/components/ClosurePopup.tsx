@@ -295,7 +295,7 @@ export function ClosurePopup({ closure }: Props) {
             ].join(' ')}
           >
             <ThumbsDown className="h-3.5 w-3.5" />
-            Nicht mehr {displayDownvotes > 0 && <span className="opacity-70">({displayDownvotes})</span>}
+            Nicht mehr gesperrt {displayDownvotes > 0 && <span className="opacity-70">({displayDownvotes})</span>}
           </button>
         </div>
 
