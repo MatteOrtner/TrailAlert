@@ -188,6 +188,10 @@ html {
     bottom: 36px !important;
   }
 
+  .mobile-menu-open .ta-filter-toggle {
+    display: none !important;
+  }
+
   .mobile-filter-open .leaflet-control-zoom,
   .mobile-filter-open .ta-location-control {
     display: none !important;

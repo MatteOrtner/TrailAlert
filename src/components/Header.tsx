@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { MapPin, Plus, Menu, X } from 'lucide-react'
@@ -44,6 +44,19 @@ export function Header() {
     // Do NOT call markSeen — sheet reappears on next Melden tap
     setShowOnboarding(false)
   }
+
+  useEffect(() => {
+    const className = 'mobile-menu-open'
+    if (menuOpen) {
+      document.body.classList.add(className)
+    } else {
+      document.body.classList.remove(className)
+    }
+
+    return () => {
+      document.body.classList.remove(className)
+    }
+  }, [menuOpen])
 
   return (
     <header className="fixed inset-x-0 top-0 z-[1000] h-16 border-b border-border bg-bg-dark/95" style={{ paddingTop: 'env(safe-area-inset-top)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
