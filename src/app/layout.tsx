@@ -12,6 +12,7 @@ import { AuthModal } from '@/components/AuthModal'
 import { AuthModalProvider } from '@/contexts/AuthModalContext'
 import { ReportSuccessToast } from '@/components/ReportSuccessToast'
 import { ClientErrorReporter } from '@/components/ClientErrorReporter'
+import { SEO_AREAS, SEO_ALTERNATE_BRAND, SEO_KEYWORDS } from '@/lib/seo'
 
 const jakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -30,17 +31,30 @@ const STRUCTURED_DATA = [
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: APP_NAME,
-    alternateName: 'Trail Alert',
+    alternateName: SEO_ALTERNATE_BRAND,
     url: APP_URL,
     inLanguage: 'de-AT',
+    keywords: SEO_KEYWORDS.join(', '),
   },
   {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: APP_NAME,
-    alternateName: 'Trail Alert',
+    alternateName: SEO_ALTERNATE_BRAND,
     url: APP_URL,
     logo: `${APP_URL}/icon-512.png`,
+    areaServed: SEO_AREAS,
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: APP_NAME,
+    alternateName: SEO_ALTERNATE_BRAND,
+    applicationCategory: 'TravelApplication',
+    operatingSystem: 'Web',
+    url: APP_URL,
+    areaServed: SEO_AREAS,
+    inLanguage: 'de-AT',
   },
 ]
 
@@ -49,7 +63,7 @@ export const metadata: Metadata = {
   title: TITLE,
   description: DESC,
   applicationName: APP_NAME,
-  keywords: ['Mountainbike', 'Forstwege', 'Sperren', 'Osttirol', 'Tirol', 'TrailAlert', 'Trail Alert', 'MTB'],
+  keywords: SEO_KEYWORDS,
   authors: [{ name: APP_NAME }],
   alternates: { canonical: '/' },
   robots: { index: true, follow: true },

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { MapLoader }  from '@/components/MapLoader'
 import { AuthToast }  from '@/components/AuthToast'
 import { redirect } from 'next/navigation'
+import { SEO_KEYWORDS } from '@/lib/seo'
 
 interface Props {
   searchParams: Promise<{
@@ -18,6 +19,7 @@ interface Props {
 export const metadata: Metadata = {
   title: 'TrailAlert | Trail Alert – Forstwege-Sperren in Osttirol & Tirol',
   description: 'TrailAlert (Trail Alert) zeigt aktuelle Forstwege-Sperren für Mountainbiker in Osttirol und Tirol.',
+  keywords: SEO_KEYWORDS,
   alternates: { canonical: '/' },
 }
 
