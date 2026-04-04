@@ -22,20 +22,42 @@ const jakartaSans = Plus_Jakarta_Sans({
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://trailalert.at'
 const TITLE   = 'TrailAlert — Forstwege-Sperren für Mountainbiker'
-const DESC    = 'Aktuelle Forstwege-Sperren in Osttirol und Tirol. Crowdsourcing-Plattform für Mountainbiker — melde Sperren, stimme ab und behalte deine Lieblingsgebiete im Blick.'
+const DESC    = 'TrailAlert (auch Trail Alert): Aktuelle Forstwege-Sperren in Osttirol und Tirol. Crowdsourcing-Plattform für Mountainbiker — melde Sperren, stimme ab und behalte deine Lieblingsgebiete im Blick.'
+const APP_NAME = 'TrailAlert'
+
+const STRUCTURED_DATA = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: APP_NAME,
+    alternateName: 'Trail Alert',
+    url: APP_URL,
+    inLanguage: 'de-AT',
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: APP_NAME,
+    alternateName: 'Trail Alert',
+    url: APP_URL,
+    logo: `${APP_URL}/icon-512.png`,
+  },
+]
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: TITLE,
   description: DESC,
-  keywords: ['Mountainbike', 'Forstwege', 'Sperren', 'Osttirol', 'Tirol', 'TrailAlert', 'MTB'],
-  authors: [{ name: 'TrailAlert' }],
+  applicationName: APP_NAME,
+  keywords: ['Mountainbike', 'Forstwege', 'Sperren', 'Osttirol', 'Tirol', 'TrailAlert', 'Trail Alert', 'MTB'],
+  authors: [{ name: APP_NAME }],
+  alternates: { canonical: '/' },
   robots: { index: true, follow: true },
   openGraph: {
     type:      'website',
     locale:    'de_AT',
     url:       APP_URL,
-    siteName:  'TrailAlert',
+    siteName:  APP_NAME,
     title:     TITLE,
     description: DESC,
     images: [
@@ -68,7 +90,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black',
-    title: 'TrailAlert',
+    title: APP_NAME,
   },
 }
 
@@ -86,6 +108,11 @@ export default function RootLayout({
   return (
     <html lang="de" className={jakartaSans.variable}>
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
+        />
+
         {/* Register Serwist Service Worker for offline capability */}
         <script
           dangerouslySetInnerHTML={{
